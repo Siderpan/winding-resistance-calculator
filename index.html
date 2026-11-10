@@ -139,6 +139,11 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 #pop .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:4px}
 @media (prefers-reduced-motion:no-preference){#pop{animation:pin .14s ease-out}@keyframes pin{from{opacity:0;transform:translateY(4px)}}}
 
+/* motor tabs */
+.mtabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
+.mtabs button{font:inherit;font-size:.98rem;font-weight:500;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 18px 9px;cursor:pointer;margin-bottom:-1px}
+.mtabs button:hover{color:var(--ink)}
+.mtabs button[aria-selected="true"]{color:var(--copper);border-bottom-color:var(--copper);font-weight:700}
 /* readability */
 body{font-size:16px}
 .lab{font-size:.88rem}
@@ -159,7 +164,7 @@ input,select{font-size:1rem;padding:8px 10px}
 #msgs:empty{display:none}
 .cols.one{grid-template-columns:minmax(0,1fr)}
 .lt{font-size:.86rem}
-.cbox svg{max-width:210px}
+.cbox svg{max-width:250px}
 .legend{font-size:.8rem;margin-top:12px}
 .cad text{font-size:13px}
 .cad .dimt{font-size:14px}
@@ -170,6 +175,10 @@ input,select{font-size:1rem;padding:8px 10px}
 </head>
 <body>
 <div class="wrap">
+<div class="mtabs" role="tablist" aria-label="馬達型式">
+  <button type="button" role="tab" id="tabOut" aria-selected="true">外轉式馬達</button>
+  <button type="button" role="tab" id="tabIn" aria-selected="false">內轉式馬達</button>
+</div>
 <header class="top">
   <div>
     <h1>電阻計算</h1>
@@ -189,7 +198,7 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="L"><span class="tx">疊厚 L</span><button class="info" data-k="L" type="button">?</button><span class="u">mm</span></label><input id="L" type="number" step="0.1" min="0.1" value="15"></div>
       <div class="f"><label class="lab" for="b"><span class="tx">齒寬 b</span><button class="info" data-k="b" type="button">?</button><span class="u">mm</span></label><input id="b" type="number" step="0.1" min="0.1" value="4"></div>
       <div class="f"><label class="lab" for="h"><span class="tx">可繞線高度 h</span><button class="info" data-k="h" type="button">?</button><span class="u">mm</span></label><input id="h" type="number" step="0.1" min="0.05" value="6"></div>
-      <div class="f"><label class="lab" for="Ry"><span class="tx">軛部外圓半徑 R<sub>y</sub></span><button class="info" data-k="Ry" type="button">?</button><span class="u">mm</span></label><input id="Ry" type="number" step="0.5" min="0" value="16"></div>
+      <div class="f"><label class="lab" for="Ry"><span class="tx" id="lblRy">軛部外圓半徑 R<sub>y</sub></span><button class="info" data-k="Ry" type="button">?</button><span class="u">mm</span></label><input id="Ry" type="number" step="0.5" min="0" value="16"></div>
       <div class="f"><label class="lab" for="Z"><span class="tx">槽數 Z</span><button class="info" data-k="Z" type="button">?</button><span class="u">槽</span></label><input id="Z" type="number" step="1" min="0" value="12"></div>
       <div class="f"><label class="lab" for="Ds"><span class="tx">定子外徑 D<sub>s</sub></span><button class="info" data-k="Ds" type="button">?</button><span class="u">mm</span></label><input id="Ds" type="number" step="0.5" min="0" value="47"></div>
       <div class="f"><label class="lab" for="Di"><span class="tx">定子內徑 D<sub>i</sub></span><button class="info" data-k="Di" type="button">?</button><span class="u">mm</span></label><input id="Di" type="number" step="0.5" min="0" value="26"></div>
@@ -297,8 +306,8 @@ R(T) = R₂₀ · (234.5+T)/254.5</pre>
     <div class="view">
       <h3>接線電路</h3>
       <div class="conn">
-        <button type="button" class="cbox" id="boxY" aria-pressed="true"><div class="ctitle">Y 星形</div><svg id="svgY" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvY"></div></button>
-        <button type="button" class="cbox" id="boxD" aria-pressed="false"><div class="ctitle">Δ 三角形</div><svg id="svgD" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvD"></div></button>
+        <button type="button" class="cbox" id="boxY" aria-pressed="true"><div class="ctitle">Y 星形</div><svg id="svgY" viewBox="0 0 300 250" aria-hidden="true"></svg><div class="cval" id="cvY"></div></button>
+        <button type="button" class="cbox" id="boxD" aria-pressed="false"><div class="ctitle">Δ 三角形</div><svg id="svgD" viewBox="0 0 300 250" aria-hidden="true"></svg><div class="cval" id="cvD"></div></button>
       </div>
     </div>
   </div>
@@ -335,12 +344,12 @@ try{const s=localStorage.getItem('wr-theme'); if(s) setTheme(s);}catch(e){}
 const G={
   L:['疊厚','L','矽鋼片疊起來的軸向總厚度。線圈繞在齒上時，長邊要跨越這個長度。'],
   b:['齒寬','b','繞線那顆齒的寬度（切線方向）。'],
-  h:['可繞線高度','h','在齒側（緊貼齒面處）量，從極靴側絕緣面到軛部側絕緣面的距離，已扣掉兩端絕緣。\n軛部側為圓弧，離齒越遠底部越低，外層可多排幾根，本頁會依 R_y 自動計算。'],
-  Ds:['定子外徑','D_s','極靴外緣所在圓的直徑。外轉子馬達中就是定子最大外徑，面對氣隙與磁鐵。決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
-  Di:['定子內徑','D_i','軛部內側（中心孔）的直徑。軛部厚度 = (2R_y − D_i) ÷ 2。\n填 0 時軛部以示意厚度繪製。'],
+  h:['可繞線高度','h',''],
+  Ds:['定子外徑','D_s',''],
+  Di:['定子內徑','D_i',''],
   wso:['槽開口寬度','b_so','相鄰兩極靴尖端之間的開口寬度，繞線針嘴與導線由此進入槽內。本頁以平行於槽中心線的開口繪製。\n開口越窄，齒槽轉矩通常越小，但繞線越困難。'],
   Z:['槽數','Z','定子的槽數，等於齒數。用來畫定子全圖、算槽面積與槽滿率，並檢查相鄰兩齒的線圈在槽中央是否互相干涉。\n需同時設定軛部外圓半徑 R_y。填 0 不檢查。'],
-  Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
+  Ry:['軛部外圓半徑','R_y',''],
   i:['絕緣厚','i','齒面到導線之間的絕緣單邊厚度，例如絕緣骨架壁厚、絕緣紙或粉體塗裝。四面各加一次，所以繞線的內圈是 (L+2i) × (b+2i)。'],
   rf:['剖面內角 R','r_f','絕緣骨架在齒側壁與上、下擋板（極靴側、軛部側）交接處的內圓角，如剖面圖上齒根與齒頂的四個角。\n圓角會佔掉角落的位置：導線中心距圓角圓心須 ≤ r_f − d_o/2，落在圓角內的排線位置會被略過。\n設 0 為直角。'],
   r0:['頂視轉角半徑','r₀','絕緣外表面在四個角的圓角半徑，也就是第一層導線貼著轉彎的地方。\n粉體塗裝約等於 i；骨架依模具設計，常見 0.3～1 mm。設 0 等於直角轉彎。'],
@@ -383,7 +392,42 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 addEventListener('scroll',()=>{if(popBtn){pop.hidden=true;popBtn.setAttribute('aria-expanded','false');popBtn=null;}},{passive:true});
 
 /* ---------- state ---------- */
-let pat='sq', conn='Y';
+let pat='sq', conn='Y', motor='out';
+const GM={
+  out:{
+    Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
+    h:['可繞線高度','h','在齒側（緊貼齒面處）量，從極靴側絕緣面到軛部側絕緣面的距離，已扣掉兩端絕緣。\n外轉式的軛部在內側，圓弧離齒越遠越低，外層可多排幾根，本頁會依 R_y 自動計算。'],
+    Ds:['定子外徑','D_s','極靴外緣所在圓的直徑。外轉式馬達中就是定子最大外徑，面對氣隙與外側磁鐵，決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
+    Di:['定子內徑','D_i','軛部內側（中心孔）的直徑。軛部厚度 = (2R_y − D_i) ÷ 2。\n填 0 時軛部以示意厚度繪製。'],
+    lblRy:'軛部外圓半徑 R<sub>y</sub>'},
+  in:{
+    Ry:['軛部內圓半徑','R_y','定子中心到軛部內圓（槽底、齒根所在圓）的半徑。內轉式的軛部在外側，槽底圓弧離齒越遠越靠近極靴，外層可排的根數會變少。\n填 0 視為平底。'],
+    h:['可繞線高度','h','在齒側（緊貼齒面處）量，從極靴側絕緣面到軛部側絕緣面的距離，已扣掉兩端絕緣。\n內轉式的槽底圓弧離齒越遠越高，外層可排根數會減少，本頁會依 R_y 自動計算。'],
+    Ds:['定子外徑','D_s','軛部外緣的直徑，也就是內轉式定子鐵芯的最大外徑。軛部厚度 = (D_s − 2R_y) ÷ 2。\n填 0 時軛部以示意厚度繪製。'],
+    Di:['定子內徑','D_i','定子孔徑，也就是極靴內緣所在圓的直徑，面對氣隙與轉子磁鐵，決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
+    lblRy:'軛部內圓半徑 R<sub>y</sub>'}
+};
+const IN_IDS=[...document.querySelectorAll('.inputs input')].map(el=>el.id);
+const VALS={out:Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),
+  in:Object.assign(Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),{L:'15',b:'4',h:'7.8',Ry:'25',Z:'12',Ds:'60',Di:'30',wso:'2'})};
+function applyMotor(){
+  const m=GM[motor];
+  for(const k of ['Ry','h','Ds','Di']) G[k]=m[k];
+  $('lblRy').innerHTML=m.lblRy;
+  $('tabOut').setAttribute('aria-selected',motor==='out');$('tabIn').setAttribute('aria-selected',motor==='in');
+  document.title='電阻計算 · '+(motor==='out'?'外轉式':'內轉式');
+}
+function setMotor(m){
+  if(m===motor) return;
+  VALS[motor]=Object.fromEntries(IN_IDS.map(id=>[id,$(id).value]));
+  motor=m;
+  for(const id of IN_IDS) $(id).value=VALS[m][id];
+  applyMotor();
+  try{history.replaceState(null,'',m==='in'?'#inner':'#outer');}catch(e){}
+  run();
+}
+$('tabOut').addEventListener('click',()=>setMotor('out'));
+$('tabIn').addEventListener('click',()=>setMotor('in'));
 function seg(a,b,cb){[a,b].forEach((el,i)=>el.addEventListener('click',()=>{a.setAttribute('aria-pressed',i===0);b.setAttribute('aria-pressed',i===1);cb(i);run();}));}
 seg($('pSq'),$('pOr'),i=>pat=i?'or':'sq');
 seg($('cY'),$('cD'),i=>conn=i?'D':'Y');
@@ -404,17 +448,21 @@ function compute(){
   if(r0<p.r0) R.msgs.push(['','轉角半徑大於齒部一半，已限制為 '+f(r0)+' mm。']);
   const pa=p.dout*p.g, rw=p.dout/2;
   const Ry=Math.max(0,v('Ry')||0);
+  const sg=motor==='out'?1:-1;                          // 外轉 +1：齒朝外；內轉 −1：齒朝內
   const x0=p.b/2+p.i;                                   // 齒側絕緣面（距齒中心線）
-  let yc=null;                                          // 圓心 y（以繞線窗口頂為 0、向下為正）
+  const Rins=Ry+sg*p.i;                                 // 軛部側絕緣表面所在圓
+  let yc=null;                                          // 窗口頂（y=0）處的半徑；ρ = yc − sg·y
   if(Ry>0){
-    if(Ry+p.i<=x0){R.err='軛部外圓半徑 R_y 必須大於齒寬的一半。';return R;}
-    yc=p.h+Math.sqrt((Ry+p.i)**2-x0*x0);
+    if(Rins<=x0){R.err='R_y 必須大於齒寬的一半加絕緣厚。';return R;}
+    yc=Math.sqrt(Rins*Rins-x0*x0)+sg*p.h;
+    if(yc-p.i<=x0){R.err='可繞線高度 h 太大：齒尖已到達定子中心附近。';return R;}
   }
-  const ysI=x=>Ry>0?((Ry+p.i)>x?yc-Math.sqrt((Ry+p.i)**2-x*x):yc):p.h;   // 絕緣內表面（窗口底）
-  const yMax=x=>{if(Ry<=0)return p.h-rw;const D=(Ry+p.i+rw)**2-x*x;return D>0?Math.min(yc,yc-Math.sqrt(D)):yc;};
+  const sqr=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
+  const ysI=x=>Ry>0?sg*(yc-sqr(Rins,x)):p.h;           // 絕緣內表面（窗口底）
+  const yMax=x=>{if(Ry<=0)return p.h-rw;const D=(Rins+sg*rw)**2-x*x;if(D<=0)return sg>0?yc:-1e9;return sg>0?Math.min(yc,yc-Math.sqrt(D)):Math.sqrt(D)-yc;};
   // 剖面內角：上角圓心 (x0+rf, rf)；下角圓心與齒側面、軛部側圓弧同時相切
   const rf=p.rf;
-  const yfB=Ry>0?yc-Math.sqrt(Math.max(0,(Ry+p.i+rf)**2-(x0+rf)**2)):p.h-rf;
+  const yfB=Ry>0?sg*(yc-sqr(Rins+sg*rf,x0+rf)):p.h-rf;
   const yTop=xc=>{const dx=x0+rf-xc;return (rf>rw&&dx>0)?Math.max(rw,rf-Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx))):rw;};
   const yBot=xc=>{let m=yMax(xc);const dx=x0+rf-xc;if(rf>rw&&dx>0)m=Math.min(m,yfB+Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx)));return m;};
   const posAt=(c,shift)=>{const xc=x0+c,lo=yTop(xc)-1e-9,hi=yBot(xc)+1e-9,a=[];
@@ -449,7 +497,7 @@ function compute(){
   let win=0;{const m=60,dx=t/m;for(let j=0;j<m;j++)win+=ysI(x0+(j+.5)*dx)*dx;win-=2*Math.min(rf,t)**2*(1-Math.PI/4);}
   const fill=total*A/win;
   const caps=layers.map(L=>L.cap), capMin=Math.min(...caps), capMax=Math.max(...caps);
-  Object.assign(R,{Lp,bp,r0,pa,pr,n0,mode,Ry,yc,x0,ysI,yMax,rf,yfB,capMin,capMax,win,straight,layers,sum,strand,mlt,t,mltF,A,Rcoil,Rph20,kLL,fill,
+  Object.assign(R,{Lp,bp,r0,pa,pr,n0,mode,Ry,yc,sg,Rins,x0,ysI,yMax,rf,yfB,capMin,capMax,win,straight,layers,sum,strand,mlt,t,mltF,A,Rcoil,Rph20,kLL,fill,
     phaseLen:(strand*p.cpp+p.lead*p.a)/1000});
   if(p.cpp%p.a!==0) R.msgs.push(['warn','每相線圈數必須能被並聯路數整除。']);
   // 定子：槽中心線干涉、槽面積、槽滿率
@@ -458,37 +506,42 @@ function compute(){
   if(Z>=3&&Ry>0){
     const al=Math.PI/Z, sa=Math.sin(al), ca=Math.cos(al);
     const st={al,minGap:Infinity,bad:0,err:null};
-    if(p.b/2>=Ry*sa) st.err='齒寬太大：相鄰兩齒在軛部外圓處已經重疊，請檢查齒寬、R_y 與槽數。';
-    for(const L of layers){L.bad=L.ys.map(y=>{const d=(yc-y)*sa-(x0+L.c)*ca-rw;if(d<st.minGap)st.minGap=d;if(d<-1e-9){st.bad++;return true;}return false;});}
+    const rhoU=yc+sg*p.i;
+    if(p.b/2>=(sg>0?Ry:rhoU)*sa) st.err='齒寬太大：相鄰兩齒已經重疊，請檢查齒寬、R_y、可繞線高度與槽數。';
+    for(const L of layers){L.bad=L.ys.map(y=>{const d=(yc-sg*y)*sa-(x0+L.c)*ca-rw;if(d<st.minGap)st.minGap=d;if(d<-1e-9){st.bad++;return true;}return false;});}
     // 半槽面積（鋼材邊界：齒側面、軛部外圓、極靴下緣）與絕緣內淨面積，網格積分
-    const yk0=x=>yc-Math.sqrt(Math.max(0,Ry*Ry-x*x));
-    const xm=(yc+p.i)*Math.tan(al), m=240;
+    const yk0=x=>sg*(yc-sqr(Ry,x));
+    const xm=Math.min((sg>0?yc+p.i:Ry)*Math.tan(al),Ry*.999), m=240;
     let aS=0,aN=0; const dx=(xm-p.b/2)/m;
     for(let a=0;a<m;a++){const x=p.b/2+(a+.5)*dx;
       const y0=-p.i, y1=yk0(x), dy=(y1-y0)/m;
       if(dy<=0) continue;
-      for(let c=0;c<m;c++){const y=y0+(c+.5)*dy; if((yc-y)*sa-x*ca<0) continue; aS+=dx*dy;
+      for(let c=0;c<m;c++){const y=y0+(c+.5)*dy; if((yc-sg*y)*sa-x*ca<0) continue; aS+=dx*dy;
         if(x>=x0&&y>=0&&y<=ysI(x)) aN+=dx*dy;}}
     aN-=2*rf*rf*(1-Math.PI/4);
     st.aSlot=2*aS; st.aNet=2*Math.max(aN,1e-9);
     st.fillCu=2*total*A/st.aSlot;
     st.fillOd=2*total*(Math.PI/4*p.dout*p.dout)/st.aNet;
     R.st=st;
-    const Di=Math.max(0,v('Di')||0);
-    if(Di>0){
-      if(Di>=2*Ry) R.msgs.push(['warn',`定子內徑 ${f(Di,2)} mm 必須小於軛部外圓直徑 ${f(2*Ry,2)} mm。`]);
-      else st.Ri=Di/2;
+    const Di=Math.max(0,v('Di')||0), Ds=Math.max(0,v('Ds')||0), wso=Math.max(0,v('wso')||0);
+    // 外轉：內徑 = 軛部內側、外徑 = 極靴外緣；內轉：外徑 = 軛部外側、內徑 = 極靴內緣（定子孔）
+    const Dyf=sg>0?Di:Ds, Dsh=sg>0?Ds:Di;
+    if(Dyf>0){
+      const Ryf=Dyf/2;
+      if(sg>0&&Ryf>=Ry) R.msgs.push(['warn',`定子內徑 ${f(Di,2)} mm 必須小於軛部外圓直徑 ${f(2*Ry,2)} mm。`]);
+      else if(sg<0&&Ryf<=Ry) R.msgs.push(['warn',`定子外徑 ${f(Ds,2)} mm 必須大於軛部內圓直徑 ${f(2*Ry,2)} mm。`]);
+      else st.Ryf=Ryf;
     }
-    const Ds=Math.max(0,v('Ds')||0), wso=Math.max(0,v('wso')||0);
-    if(Ds>0){
-      const Rso=Ds/2, rhoU=yc+p.i, hh=wso/2;
-      st.Rso=Rso; st.rhoU=rhoU; st.wso=wso;
-      if(Rso<=rhoU) st.shoeErr=`定子外徑太小：外圓落在極靴下緣以內，至少需大於 ${f(2*rhoU,2)} mm。`;
+    if(Dsh>0){
+      const Rsh=Dsh/2, hh=wso/2;
+      st.Rso=Rsh; st.rhoU=rhoU; st.wso=wso;
+      if(sg>0?Rsh<=rhoU:Rsh>=rhoU) st.shoeErr=sg>0?`定子外徑太小：外圓落在極靴下緣以內，至少需大於 ${f(2*rhoU,2)} mm。`:`定子內徑太大：內圓已超過極靴下緣，必須小於 ${f(2*rhoU,2)} mm。`;
+      else if(Rsh<=hh) st.shoeErr='槽開口寬度大於極靴所在圓。';
       else{
-        const xt=(rhoU*sa-hh)/ca, rhoT=sa*hh+ca*Math.sqrt(Rso*Rso-hh*hh), xT=(rhoT*sa-hh)/ca;
-        if(xt<=p.b/2) st.shoeErr='槽開口太寬：極靴尖端已縮到齒寬以內。';
-        else if(rhoT<=rhoU) st.shoeErr='定子外徑太小：極靴尖端厚度為 0。';
-        else st.shoe={xt,xT,rhoT,thkC:Rso-rhoU,thkT:(rhoT-rhoU)/ca};
+        const xt=(rhoU*sa-hh)/ca, rhoT=sa*hh+ca*Math.sqrt(Rsh*Rsh-hh*hh), xT=(rhoT*sa-hh)/ca;
+        if(Math.min(xt,xT)<=p.b/2) st.shoeErr='槽開口太寬：極靴尖端已縮到齒寬以內。';
+        else if(sg*(rhoT-rhoU)<=0) st.shoeErr='極靴尖端厚度為 0，請檢查'+(sg>0?'定子外徑':'定子內徑')+'與槽開口。';
+        else st.shoe={xt,xT,rhoT,thkC:Math.abs(Rsh-rhoU),thkT:Math.abs(rhoT-rhoU)/ca};
       }
       if(st.shoeErr) R.msgs.push(['warn',st.shoeErr]);
       else if(wso<p.dout) R.msgs.push(['warn',`槽開口 ${f(wso)} mm 小於導線外徑 ${f(p.dout)} mm，導線無法繞入。`]);
@@ -497,8 +550,8 @@ function compute(){
     if(st.err) R.msgs.push(['warn',st.err]);
     if(st.bad>0) R.msgs.push(['warn',`有 ${st.bad} 根導線（每側）越過槽中心線，會和相鄰齒的線圈干涉，定子全圖中以紅色標出。`]);
     if(p.cpp*3!==Z) R.msgs.push(['',`三相集中繞通常每相線圈數 = 槽數 ÷ 3 = ${Z%3===0?Z/3:(Z/3).toFixed(2)}，目前輸入為 ${p.cpp}。`]);
-  } else if(Z>=3) R.msgs.push(['','定子全圖需要軛部外圓半徑 R_y 大於 0。']);
-  if(Ry>0&&x0+t>.75*Ry) R.msgs.push(['warn','線圈外緣已接近軛部圓弧的側邊，實際上會碰到相鄰齒的線圈或槽底，請確認 R_y 與槽形。']);
+  } else if(Z>=3) R.msgs.push(['','定子全圖需要 R_y 大於 0。']);
+  if(sg>0&&Ry>0&&x0+t>.75*Ry) R.msgs.push(['warn','線圈外緣已接近軛部圓弧的側邊，實際上會碰到相鄰齒的線圈或槽底，請確認 R_y 與槽形。']);
   if(p.tmax>0&&t>p.tmax+1e-9) R.msgs.push(['warn',`線圈厚度 ${f(t)} mm 超過可用上限 ${f(p.tmax)} mm，相鄰線圈會干涉。可減少匝數、改細線或增加可繞線高度。`]);
   else if(p.tmax>0) R.msgs.push(['ok',`線圈厚度 ${f(t)} mm，在上限 ${f(p.tmax)} mm 內，餘裕 ${f(p.tmax-t)} mm。`]);
   if(last.n<last.cap) R.msgs.push(['',`最外層只排了 ${last.n}／${last.cap} 根，屬未滿層。`]);
@@ -528,52 +581,52 @@ const DEFS=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWi
 /* 單側絕緣骨架外形（繞線窗口座標：窗口頂 y=0、向下為正；x 自齒中心線起算） */
 function arcPts(fn,xa,xb,n=36){const a=[];for(let j=0;j<=n;j++){const x=xa+(xb-xa)*j/n;a.push([x,fn(x)]);}return a;}
 function winFns(R){
-  const {p,Ry,yc}=R, flat=!(Ry>0), sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
+  const {p,Ry,yc,sg,Rins}=R, flat=!(Ry>0), sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
   return {flat,
-    ins:x=>flat?p.h:yc-sq(Ry+p.i,x),
-    yoke:x=>flat?p.h+p.i:yc-sq(Ry,x)};
+    ins:x=>flat?p.h:sg*(yc-sq(Rins,x)),
+    yoke:x=>flat?p.h+p.i:sg*(yc-sq(Ry,x))};
 }
 function insHalf(R,xo){
-  const {p,rf,yfB,Ry,yc}=R, F=winFns(R), xa=p.b/2, xb=xa+p.i;
+  const {p,rf,yfB,Ry,yc,sg}=R, F=winFns(R), xa=p.b/2, xb=xa+p.i;
   const fil=(cx,cy,a0,a1)=>{const o=[];for(let j=0;j<=16;j++){const a=a0+(a1-a0)*j/16;o.push([cx+rf*Math.cos(a),cy+rf*Math.sin(a)]);}return o;};
   let topC=[[xb,0]], botC=[[xb,p.h]], xT=xb;
   if(rf>0){
     topC=fil(xb+rf,rf,-Math.PI/2,-Math.PI);
-    const Fx=xb+rf, aT=F.flat?Math.PI/2:Math.atan2(yc-yfB,-Fx);
+    const Fx=xb+rf, aT=F.flat?Math.PI/2:Math.atan2(sg*(sg*yc-yfB),-sg*Fx);
     botC=fil(Fx,yfB,Math.PI,aT);
     xT=botC[botC.length-1][0];
   }
   return [[xa,-p.i],[xo,-p.i],[xo,0],...topC,...botC,...arcPts(F.ins,xT,xo),...arcPts(F.yoke,xo,xa)];
 }
 function shoePts(R,tw){
-  const {p,st,yc}=R;
-  if(st&&st.shoe){const {xt,xT,rhoT}=st.shoe, Rso=st.Rso, top=x=>yc-Math.sqrt(Math.max(0,Rso*Rso-x*x));
-    return {real:true,half:xT,pts:[[-p.b/2,-p.i],[-xt,-p.i],[-xT,yc-rhoT],...arcPts(top,-xT,xT,48),[xT,yc-rhoT],[xt,-p.i],[p.b/2,-p.i]]};}
+  const {p,st,yc,sg}=R;
+  if(st&&st.shoe){const {xt,xT,rhoT}=st.shoe, Rso=st.Rso, top=x=>sg*(yc-Math.sqrt(Math.max(0,Rso*Rso-x*x))), yT=sg*(yc-rhoT);
+    return {real:true,half:Math.max(xt,xT),pts:[[-p.b/2,-p.i],[-xt,-p.i],[-xT,yT],...arcPts(top,-xT,xT,48),[xT,yT],[xt,-p.i],[p.b/2,-p.i]]};}
   const w=shoeHalf(R,tw), sh=Math.max(p.h*.12,p.dout*2);
   return {real:false,half:w,pts:[[-p.b/2,-p.i],[-w,-p.i],[-w,-p.i-sh],[w,-p.i-sh],[w,-p.i],[p.b/2,-p.i]]};
 }
 function shoeHalf(R,tw){
-  const {p,Ry,yc,st}=R;
+  const {p,Ry,yc,st,sg}=R;
   let w=p.b/2+p.i+tw*.85;
-  if(st&&Ry>0) w=Math.min(w,.8*(yc+p.i)*Math.tan(st.al));
+  if(st&&Ry>0) w=Math.min(w,.8*(yc+sg*p.i)*Math.tan(st.al));
   return w;
 }
 
 /* 剖面 A–A：極靴在上、圓弧軛部在下；軛部側絕緣與繞線窗口底部沿圓弧 */
 function drawA(R){
-  const {p,layers,t,pa,Ry,yc}=R, svg=$('svgA');
+  const {p,layers,t,pa,Ry,yc,sg,Rins}=R, svg=$('svgA');
   const W=560, flat=!(Ry>0);
   const tw=Math.max(t,p.tmax||0)+p.dout*.4;
   const SH=shoePts(R,tw);
   const sh=-Math.min(...SH.pts.map(q=>q[1]))-p.i;
-  let yk=Math.max(p.h*.22,p.dout*3); if(!flat) yk=Math.min(yk,Ry*.35,R.st&&R.st.Ri?Ry-R.st.Ri:Infinity);
-  let xw=Math.max(p.b/2+p.i+tw,SH.half)+p.dout; if(!flat) xw=Math.min(xw,.97*(Ry-yk));
-  const yW0=sh+p.i, yW1=yW0+p.h, ycD=flat?0:yW0+yc;
+  let yk=Math.max(p.h*.22,p.dout*3); if(!flat) yk=Math.min(yk,Ry*.35,R.st&&R.st.Ryf?Math.abs(Ry-R.st.Ryf):Infinity);
+  let xw=Math.max(p.b/2+p.i+tw,SH.half)+p.dout; if(!flat) xw=Math.min(xw,.97*(sg>0?Ry-yk:Rins));
+  const yW0=sh+p.i, yW1=yW0+p.h;
   const sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
-  const yIns =x=>flat?yW1:ycD-sq(Ry+p.i,x);
-  const yYoke=x=>flat?yW1+p.i:ycD-sq(Ry,x);
-  const yYin =x=>flat?yW1+p.i+yk:ycD-sq(Ry-yk,x);
-  const Ht=yYin(xw);
+  const yIns =x=>flat?yW1:yW0+sg*(yc-sq(Rins,x));
+  const yYoke=x=>flat?yW1+p.i:yW0+sg*(yc-sq(Ry,x));
+  const yYin =x=>flat?yW1+p.i+yk:yW0+sg*(yc-sq(Ry-sg*yk,x));
+  const Ht=Math.max(yYin(xw),yYin(0));
   const s=Math.min((W-150)/(2*xw),330/Ht);
   const cx=W/2, top=28;
   const X=x=>cx+x*s, Y=y=>top+y*s;
@@ -597,8 +650,8 @@ function drawA(R){
     for(const sg of [1,-1]) g+=`<path d="${poly(half.map(q=>[sg*q[0],q[1]]))}" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6" stroke-linejoin="round"/>`;
   }
   // 槽中心線
-  if(R.st){const ta=Math.tan(R.st.al), ya=yW0-p.i, yb=yW1+p.i;
-    for(const sg of [1,-1]) g+=`<line x1="${n2(X(sg*(ycD-ya)*ta))}" y1="${n2(Y(ya))}" x2="${n2(X(sg*(ycD-yb)*ta))}" y2="${n2(Y(yb))}" stroke="var(--steel)" stroke-dasharray="8 3 2 3" stroke-width="1"/>`;
+  if(R.st){const ta=Math.tan(R.st.al), ya=yW0-p.i, yb=yW1+p.i, rh=yD=>yc-sg*(yD-yW0);
+    for(const q of [1,-1]) g+=`<line x1="${n2(X(q*rh(ya)*ta))}" y1="${n2(Y(ya))}" x2="${n2(X(q*rh(yb)*ta))}" y2="${n2(Y(yb))}" stroke="var(--steel)" stroke-dasharray="8 3 2 3" stroke-width="1"/>`;
 }
   // 可用厚度上限
   if(p.tmax>0){
@@ -638,10 +691,10 @@ function drawA(R){
 /* 定子全圖：Z 個齒繞中心均布，每齒套用相同的絕緣與排線 */
 function drawS(R){
   const svg=$('svgS'), card=$('statorCard');
-  const {p,layers,t,Ry,yc,st,Z}=R;
+  const {p,layers,t,Ry,yc,st,Z,sg}=R;
   if(!st||st.err){
     card.hidden=false;
-    svg.innerHTML=`<text x="260" y="260" text-anchor="middle" style="font-size:13px">${Z>=3?(st&&st.err?'齒寬與槽數不相容':'請設定軛部外圓半徑 R_y'):'輸入槽數 Z（≥3）以顯示定子全圖'}</text>`;
+    svg.innerHTML=`<text x="260" y="260" text-anchor="middle" style="font-size:13px">${Z>=3?(st&&st.err?'齒寬與槽數不相容':'請設定 R_y'):'輸入槽數 Z（≥3）以顯示定子全圖'}</text>`;
     $('sTbl').innerHTML='';$('sMsgs').innerHTML=st&&st.err?`<li class="warn">${st.err}</li>`:'';
     return;
   }
@@ -649,23 +702,25 @@ function drawS(R){
   const W=520, C=W/2;
   const tw=Math.max(t,p.tmax||0)+p.dout*.4;
   const SH=shoePts(R,tw);
-  const yk=st.Ri?Ry-st.Ri:Math.min(Math.max(p.h*.22,p.dout*3),Ry*.35);
-  const Rso=SH.real?st.Rso:yc-Math.min(...SH.pts.map(q=>q[1]));
-  const s=(C-60)/Rso;
+  const ykv=Math.min(Math.max(p.h*.22,p.dout*3),Ry*.35);
+  const Rf=st.Ryf||(Ry-sg*ykv);                       // 軛部另一側（外轉：內緣；內轉：外緣）
+  const Rsh=SH.real?st.Rso:yc-sg*(sg>0?Math.min(...SH.pts.map(q=>q[1])):Math.min(...SH.pts.map(q=>q[1])));
+  const Rmax=sg>0?Rsh:Rf;
+  const s=(C-60)/Rmax;
   const sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
-  const xo=Math.min(p.b/2+p.i+tw,(yc+p.i)*Math.tan(st.al));
-  // 局部（窗口座標 x,y）→ 螢幕；齒軸方向角 th
-  const T=(th,x,y)=>{const rho=yc-y, gx=rho*Math.cos(th)-x*Math.sin(th), gy=rho*Math.sin(th)+x*Math.cos(th);return [C+gx*s,C-gy*s];};
+  const xo=Math.min(p.b/2+p.i+tw,(yc+sg*p.i)*Math.tan(st.al));
+  // 局部（窗口座標 x,y）→ 螢幕；齒軸方向角 th；ρ = yc − sg·y
+  const T=(th,x,y)=>{const rho=yc-sg*y, gx=rho*Math.cos(th)-x*Math.sin(th), gy=rho*Math.sin(th)+x*Math.cos(th);return [C+gx*s,C-gy*s];};
   const path=(th,pts)=>'M'+pts.map(q=>{const r=T(th,q[0],q[1]);return n2(r[0])+' '+n2(r[1]);}).join('L')+'Z';
-  const yo=x=>yc-sq(Ry,x);
+  const yo=x=>sg*(yc-sq(Ry,x));
   const toothPts=[[-p.b/2,yo(-p.b/2)+.02*Ry],...SH.pts,[p.b/2,yo(p.b/2)+.02*Ry]];
   const ins=insHalf(R,xo);
   const ro=Math.max(p.dout/2*s,.5);
   let g='';
-  // 軛部環
-  const rIn=(Ry-yk)*s, rOut=Ry*s;
-  g+=`<path d="M${C-rOut} ${C}a${rOut} ${rOut} 0 1 0 ${2*rOut} 0a${rOut} ${rOut} 0 1 0 ${-2*rOut} 0ZM${C-rIn} ${C}a${rIn} ${rIn} 0 1 1 ${2*rIn} 0a${rIn} ${rIn} 0 1 1 ${-2*rIn} 0Z" fill="var(--steel-fill)" fill-rule="evenodd" stroke="none"/>`;
-  // 外形輪廓：齒側＋極靴（開放路徑）＋齒間軛部圓弧＋內徑圓
+  // 軛部環（Ry 與 Rf 之間）
+  const rA=Math.min(Ry,Rf)*s, rB=Math.max(Ry,Rf)*s, rRoot=Ry*s;
+  g+=`<path d="M${C-rB} ${C}a${rB} ${rB} 0 1 0 ${2*rB} 0a${rB} ${rB} 0 1 0 ${-2*rB} 0ZM${C-rA} ${C}a${rA} ${rA} 0 1 1 ${2*rA} 0a${rA} ${rA} 0 1 1 ${-2*rA} 0Z" fill="var(--steel-fill)" fill-rule="evenodd" stroke="none"/>`;
+  // 外形輪廓：齒側＋極靴（開放路徑）＋齒間軛部圓弧（齒根圓）＋軛部另一側圓
   const dl=Math.asin(Math.min(1,p.b/2/Ry));
   const openTooth=[[-p.b/2,yo(-p.b/2)],...SH.pts,[p.b/2,yo(p.b/2)]];
   let outline='';
@@ -675,31 +730,39 @@ function drawS(R){
     teeth+=`<path d="${path(th,toothPts)}"/>`;
     outline+=path(th,openTooth).slice(0,-1);
     {const a1=th+dl, a2=th+2*st.al-dl;
-     outline+=`M${n2(C+rOut*Math.cos(a1))} ${n2(C-rOut*Math.sin(a1))}A${n2(rOut)} ${n2(rOut)} 0 0 0 ${n2(C+rOut*Math.cos(a2))} ${n2(C-rOut*Math.sin(a2))}`;}
-    if(p.i>0) for(const sg of [1,-1]) insl+=`<path d="${path(th,ins.map(q=>[sg*q[0],q[1]]))}"/>`;
+     outline+=`M${n2(C+rRoot*Math.cos(a1))} ${n2(C-rRoot*Math.sin(a1))}A${n2(rRoot)} ${n2(rRoot)} 0 0 0 ${n2(C+rRoot*Math.cos(a2))} ${n2(C-rRoot*Math.sin(a2))}`;}
+    if(p.i>0) for(const q of [1,-1]) insl+=`<path d="${path(th,ins.map(z=>[q*z[0],z[1]]))}"/>`;
     for(const L of layers){
       const col=L.k%2?'var(--copper-2)':'var(--copper)';
-      L.ys.forEach((y,jj)=>{for(const sg of [1,-1]){const q=T(th,sg*(R.x0+L.c),y);
-        const c=`<circle cx="${n2(q[0])}" cy="${n2(q[1])}" r="${n2(ro)}"`;
+      L.ys.forEach((y,jj)=>{for(const q of [1,-1]){const z=T(th,q*(R.x0+L.c),y);
+        const c=`<circle cx="${n2(z[0])}" cy="${n2(z[1])}" r="${n2(ro)}"`;
         if(L.bad&&L.bad[jj]) bad+=c+'/>'; else wires+=c+` fill="${col}"/>`;}});
     }
   }
   g+=`<g fill="var(--steel-fill)" stroke="none">${teeth}</g>`;
   g+=`<path d="${outline}" fill="none" stroke="var(--steel)" stroke-width=".8" stroke-linejoin="round"/>`;
-  g+=`<circle cx="${C}" cy="${C}" r="${n2(rIn)}" fill="none" stroke="var(--steel)" stroke-width=".8"/>`;
+  g+=`<circle cx="${C}" cy="${C}" r="${n2(Rf*s)}" fill="none" stroke="var(--steel)" stroke-width=".8"/>`;
   g+=`<g fill="var(--ins)" stroke="var(--enamel)" stroke-width=".4">${insl}</g>`;
   g+=`<g>${wires}</g><g class="bad">${bad}</g>`;
   g+=`<text x="${C}" y="${C+4}" text-anchor="middle" style="font-size:12px">Z = ${Z}</text>`;
-  // 外徑參考圓、外徑尺寸、槽開口標註
-  const Rp=Rso*s;
+  // 極靴圓（氣隙側）虛線、外徑尺寸、槽開口標註
+  const Rp=Rsh*s, Ro=Rmax*s;
   g+=`<circle cx="${C}" cy="${C}" r="${n2(Rp)}" fill="none" stroke="var(--muted)" stroke-width=".6" stroke-dasharray="6 4"/>`;
   g=DEFS+g;
-  g+=dimH(C-Rp,C+Rp,C-Rp-24,(SH.real?'Ø':'約 Ø')+f(2*Rso,2),C,C);
+  const odReal=sg>0?SH.real:!!st.Ryf;
+  g+=dimH(C-Ro,C+Ro,C-Ro-24,(odReal?'Ø':'約 Ø')+f(2*Rmax,2),C,C);
   if(SH.real){
     let best=0,bd=1e9;for(let k=0;k<Z;k++){let a=(90-(st.al*180/Math.PI)*(2*k+1))%360;if(a<0)a+=360;const d=Math.abs(a-55);if(d<bd){bd=d;best=a;}}
-    const ph=best*Math.PI/180, x1=C+Rp*Math.cos(ph), y1=C-Rp*Math.sin(ph), x2=C+(Rp+26)*Math.cos(ph), y2=C-(Rp+26)*Math.sin(ph);
-    g+=`<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><line x1="${n2(x2)}" y1="${n2(y2)}" x2="${n2(x2+12)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(x1)}" cy="${n2(y1)}" r="2" fill="var(--ink)"/>`;
-    g+=`<text x="${n2(x2+15)}" y="${n2(y2+4)}" style="fill:var(--ink)">b<tspan dy="3" font-size="9">so</tspan><tspan dy="-3"> ${f(st.wso,2)}</tspan></text>`;
+    const ph=best*Math.PI/180, x1=C+Rp*Math.cos(ph), y1=C-Rp*Math.sin(ph);
+    if(sg>0){
+      const x2=C+(Rp+26)*Math.cos(ph), y2=C-(Rp+26)*Math.sin(ph);
+      g+=`<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><line x1="${n2(x2)}" y1="${n2(y2)}" x2="${n2(x2+12)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(x1)}" cy="${n2(y1)}" r="2" fill="var(--ink)"/>`;
+      g+=`<text x="${n2(x2+15)}" y="${n2(y2+4)}" style="fill:var(--ink)">b<tspan dy="3" font-size="9">so</tspan><tspan dy="-3"> ${f(st.wso,2)}</tspan></text>`;
+    }else{
+      const rr=Math.max(Rp-26,Rp*.55), x2=C+rr*Math.cos(ph), y2=C-rr*Math.sin(ph);
+      g+=`<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><line x1="${n2(x2)}" y1="${n2(y2)}" x2="${n2(x2-12)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(x1)}" cy="${n2(y1)}" r="2" fill="var(--ink)"/>`;
+      g+=`<text x="${n2(x2-15)}" y="${n2(y2+4)}" text-anchor="end" style="fill:var(--ink)">b<tspan dy="3" font-size="9">so</tspan><tspan dy="-3"> ${f(st.wso,2)}</tspan></text>`;
+    }
   }
   svg.innerHTML=g;
   // 統計
@@ -709,10 +772,10 @@ function drawS(R){
   $('sSub').textContent=`${Z} 槽 · 齒距 ${(360/Z).toFixed(1)}°`+(SH.real?'':' · 極靴為示意尺寸');
   $('sTbl').innerHTML=`
     <tr class="grp"><td colspan="2">定子</td></tr>
-    <tr><td>定子外徑</td><td>${SH.real?f(2*st.Rso,2)+' mm':'未設定'}</td></tr>
-    <tr><td>軛部外圓直徑</td><td>${f(2*Ry,2)} mm</td></tr>
-    <tr><td>定子內徑</td><td>${st.Ri?f(2*st.Ri,2)+' mm':'未設定'}</td></tr>
-    <tr><td>軛部厚度</td><td>${st.Ri?f(Ry-st.Ri,2)+' mm':'—'}</td></tr>
+    <tr><td>定子外徑</td><td>${(sg>0?SH.real:st.Ryf)?f(2*(sg>0?st.Rso:st.Ryf),2)+' mm':'未設定'}</td></tr>
+    <tr><td>${sg>0?'軛部外圓直徑':'軛部內圓直徑'}</td><td>${f(2*Ry,2)} mm</td></tr>
+    <tr><td>定子內徑</td><td>${(sg>0?st.Ryf:SH.real)?f(2*(sg>0?st.Ryf:st.Rso),2)+' mm':'未設定'}</td></tr>
+    <tr><td>軛部厚度</td><td>${st.Ryf?f(Math.abs(Ry-st.Ryf),2)+' mm':'—'}</td></tr>
     ${SH.real?`<tr><td>槽開口寬度</td><td>${f(st.wso,2)} mm</td></tr>
     <tr><td>極靴厚度（中央／尖端）</td><td>${f(st.shoe.thkC,2)}／${f(st.shoe.thkT,2)} mm</td></tr>`:''}
     <tr class="grp"><td colspan="2">每槽</td></tr>
@@ -729,39 +792,60 @@ function drawS(R){
 }
 
 /* 接線簡化電路：Y 為 120° 星形，Δ 為三角形；以 U–V 量測路徑上色 */
-function zig(a,b,col,w,t0=.3,t1=.72){
-  const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L,k=8;
-  const p0=[a[0]+dx*t0,a[1]+dy*t0], pts=[a,p0];
-  for(let i=1;i<k;i++){const t=t0+(t1-t0)*i/k,o=i%2?7:-7;pts.push([a[0]+dx*t+nx*o,a[1]+dy*t+ny*o]);}
-  pts.push([a[0]+dx*t1,a[1]+dy*t1],b);
-  return `<polyline points="${pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`;
+function net(a,b,k,m,col,w,t0,t1,side){
+  // a→b：先直線到 t0，m 路並聯、每路 k 個電阻串聯，t1 後直線到 b；回傳 svg 與標籤位置
+  const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;
+  const P=(t,o)=>[a[0]+dx*t+nx*o,a[1]+dy*t+ny*o];
+  const sp=13, offs=[...Array(m)].map((_,i)=>(i-(m-1)/2)*sp);
+  const pl=pts=>`<polyline points="${pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  let g=pl([a,P(t0,0)])+pl([P(t1,0),b]);
+  if(m>1) g+=pl([P(t0,offs[0]),P(t0,offs[m-1])])+pl([P(t1,offs[0]),P(t1,offs[m-1])]);
+  const span=(t1-t0)*L, slot=span/k, amp=Math.min(5.5,Math.max(3,slot*.22)), body=Math.min(.74,1-6/slot);
+  for(const o of offs){
+    const pts=[P(t0,o)];
+    for(let j=0;j<k;j++){
+      const c0=t0+(t1-t0)*(j+.5)/k, hb=(t1-t0)/k*body/2, z0=c0-hb, z1=c0+hb, n=6;
+      pts.push(P(z0,o));
+      for(let q=1;q<n;q++) pts.push(P(z0+(z1-z0)*q/n,o+(q%2?amp:-amp)));
+      pts.push(P(z1,o));
+    }
+    pts.push(P(t1,o));
+    g+=pl(pts);
+  }
+  const lo=((m-1)/2*sp+amp+12)*side;
+  return {g,lab:P((t0+t1)/2,lo)};
 }
-function term(p,lab,dx,dy){return `<circle cx="${p[0]}" cy="${p[1]}" r="5.5" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text x="${p[0]+dx}" y="${p[1]+dy}" text-anchor="middle" style="fill:var(--ink);font-weight:600;font-size:14px">${lab}</text>`;}
-function rlab(a,b,out){const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy);let nx=-dy/L,ny=dx/L;if(out&&(nx*(m[0]-130)+ny*(m[1]-130))<0){nx=-nx;ny=-ny;}
-  return `<text x="${n2(m[0]+nx*20)}" y="${n2(m[1]+ny*20+4)}" text-anchor="middle">R</text>`;}
+function term(p,lab,dx,dy){return `<circle cx="${n2(p[0])}" cy="${n2(p[1])}" r="5.5" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text x="${n2(p[0]+dx)}" y="${n2(p[1]+dy)}" text-anchor="middle" style="fill:var(--ink);font-weight:600;font-size:14px">${lab}</text>`;}
+const rcLab=(q,col)=>`<text x="${n2(q[0])}" y="${n2(q[1]+4)}" text-anchor="middle" style="fill:${col||'var(--muted)'}">R<tspan dy="3" font-size="10">c</tspan></text>`;
 function drawConn(R){
   const on='var(--copper)', off='var(--muted)';
+  const cpp=R.p.cpp, a=R.p.a, kS=Math.max(1,Math.round(cpp/a));
+  const kD=Math.min(kS,6), mD=Math.min(a,4), simp=kD<kS||mD<a;
   // Y：中心 N，U 上、V 左下、W 右下
-  const N=[130,128], Lb=92, ang=[-90,150,30].map(a=>a*Math.PI/180);
-  const [U,V,W]=ang.map(a=>[n2(N[0]+Lb*Math.cos(a)),n2(N[1]+Lb*Math.sin(a))]);
+  const N=[150,140], Lb=108, ang=[-90,150,30].map(z=>z*Math.PI/180);
+  const [U,V,W]=ang.map(z=>[N[0]+Lb*Math.cos(z),N[1]+Lb*Math.sin(z)]);
   let y='';
-  y+=zig(U,N,on,2,.18,.62)+zig(V,N,on,2,.18,.62)+zig(W,N,off,1.4,.18,.62);
-  y+=`<circle cx="${N[0]}" cy="${N[1]}" r="3.5" fill="var(--ink)"/><text x="${N[0]}" y="${N[1]+22}" text-anchor="middle" style="fill:var(--ink)">N</text>`;
-  y+=`<text x="${N[0]+16}" y="${N[1]-44}">R</text><text x="${N[0]-48}" y="${N[1]+6}">R</text><text x="${N[0]+40}" y="${N[1]+6}">R</text>`;
-  y+=term(U,'U',-16,5)+term(V,'V',-14,4)+term(W,'W',16,4);
+  for(const [T,col,wd] of [[U,on,2],[V,on,2],[W,off,1.4]]){const r=net(T,N,kD,mD,col,wd,.12,.8,1);y+=r.g+rcLab(r.lab);}
+  y+=`<circle cx="${N[0]}" cy="${N[1]}" r="3.5" fill="var(--ink)"/><text x="${N[0]}" y="${N[1]+24}" text-anchor="middle" style="fill:var(--ink)">N</text>`;
+  y+=term(U,'U',-16,5)+term(V,'V',-14,-8)+term(W,'W',14,-8);
   $('svgY').innerHTML=y;
-  // Δ：三角形頂點
-  const Ud=[130,24], Vd=[34,192], Wd=[226,192];
+  // Δ
+  const Ud=[150,24], Vd=[40,206], Wd=[260,206], cen=[150,145];
   let d='';
-  d+=zig(Ud,Vd,on,2)+zig(Vd,Wd,on,1.6)+zig(Wd,Ud,on,1.6);
-  d+=rlab(Ud,Vd,true)+rlab(Vd,Wd,true)+rlab(Wd,Ud,true);
-  d+=term(Ud,'U',-16,5)+term(Vd,'V',-4,22)+term(Wd,'W',4,22);
+  for(const [A,B] of [[Ud,Vd],[Vd,Wd],[Wd,Ud]]){
+    const mx=(A[0]+B[0])/2-cen[0], my=(A[1]+B[1])/2-cen[1], dx=B[0]-A[0], dy=B[1]-A[1];
+    const side=(-dy*mx+dx*my)>0?1:-1;
+    const r=net(A,B,kD,mD,on,1.8,.1,.9,side); d+=r.g+rcLab(r.lab);
+  }
+  d+=term(Ud,'U',-16,5)+term(Vd,'V',-16,5)+term(Wd,'W',16,5);
   $('svgD').innerHTML=d;
   // 數值
-  const Rph=R.Rph20*kT(R.p.Tref), Rop=R.Rph20*kT(R.p.Top);
+  const Rph=R.Rph20*kT(R.p.Tref), Rop=R.Rph20*kT(R.p.Top), Rc=R.Rcoil*kT(R.p.Tref);
+  const comp=(a>1?`${a} 路並聯 × 每路 ${kS} 個`:`${cpp} 個線圈串聯`)+(simp?'（圖示簡化）':'');
   const row=(k,v,hl)=>`<span>${k}</span><span${hl?' class="hl"':''}>${v}</span>`;
-  $('cvY').innerHTML=row('R<sub>LL</sub> = 2R<sub>ph</sub>',f(2*Rph)+' Ω',conn==='Y')+row('工作溫度',f(2*Rop)+' Ω')+row('I<sub>ph</sub>','= I<sub>L</sub>');
-  $('cvD').innerHTML=row('R<sub>LL</sub> = ⅔R<sub>ph</sub>',f(2/3*Rph)+' Ω',conn==='D')+row('工作溫度',f(2/3*Rop)+' Ω')+row('I<sub>ph</sub>','= I<sub>L</sub>/√3');
+  const common=row('每相組成',comp)+row('R<sub>c</sub>（每線圈）',f(Rc)+' Ω');
+  $('cvY').innerHTML=row('R<sub>LL</sub> = 2R<sub>ph</sub>',f(2*Rph)+' Ω',conn==='Y')+row('工作溫度',f(2*Rop)+' Ω')+common+row('I<sub>ph</sub>','= I<sub>L</sub>');
+  $('cvD').innerHTML=row('R<sub>LL</sub> = ⅔R<sub>ph</sub>',f(2/3*Rph)+' Ω',conn==='D')+row('工作溫度',f(2/3*Rop)+' Ω')+common+row('I<sub>ph</sub>','= I<sub>L</sub>/√3');
   $('boxY').setAttribute('aria-pressed',conn==='Y');$('boxD').setAttribute('aria-pressed',conn==='D');
 }
 $('boxY').addEventListener('click',()=>$('cY').click());
@@ -841,7 +925,8 @@ function run(){
   drawA(R);drawB(R);drawS(R);drawConn(R);renderTables(R);
 }
 document.querySelectorAll('.inputs input').forEach(el=>el.addEventListener('input',run));
-run();
+applyMotor();
+if(location.hash==='#inner'){motor='out';setMotor('in');} else run();
 })();
 </script>
 </body>
