@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="馬達繞組電阻計算：依齒部尺寸與絕緣厚度即時繪出導線排列，逐層累加線長求平均匝長 MLT，並算出相電阻與端子間電阻。">
 <title>電阻計算</title>
-<link rel="icon" href="logo.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="logo.svg?v=r5" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=r5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -165,8 +165,9 @@ h1.title .brand{flex:none;width:40px;height:40px}
 .cad.zoomed svg{cursor:grab}
 .cad.zoomed svg *{vector-effect:non-scaling-stroke}
 .cad.panning svg{cursor:grabbing}
-.zbar{position:absolute;top:8px;right:8px;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px;opacity:.55;transition:opacity .15s;z-index:2}
-.cad:hover .zbar,.zbar:focus-within,.cad.zoomed .zbar{opacity:1}
+.zbar{display:inline-flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px;margin-left:auto;font-weight:400}
+.view h3 .zbar+span,.view h3 span+.zbar{margin-left:10px}
+#sSub{margin-left:auto}
 .zbar button{font:500 .8rem/1 var(--f-body);border:0;background:transparent;color:var(--ink);min-width:26px;height:24px;border-radius:4px;cursor:pointer;padding:0 6px}
 .zbar button:hover{background:var(--sunk)}
 .zbar .zp{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);min-width:42px;text-align:center}
@@ -968,7 +969,7 @@ function applyZoom(svg){
   z.cx=Math.min(1-.5/z.k,Math.max(.5/z.k,z.cx)); z.cy=Math.min(1-.5/z.k,Math.max(.5/z.k,z.cy));
   svg.setAttribute('viewBox',`${n2(b[0]+z.cx*b[2]-w/2)} ${n2(b[1]+z.cy*b[3]-h/2)} ${n2(w)} ${n2(h)}`);
   const cad=svg.parentElement; cad.classList.toggle('zoomed',z.k>1.001);
-  const bar=cad.querySelector('.zbar'); if(bar){bar.querySelector('.zp').textContent=Math.round(z.k*100)+'%';bar.querySelector('.zr').disabled=z.k<=1.001;}
+  const bar=document.querySelector(`.zbar[data-for="${svg.id}"]`); if(bar){bar.querySelector('.zp').textContent=Math.round(z.k*100)+'%';bar.querySelector('.zr').disabled=z.k<=1.001;}
 }
 function zoomAt(svg,factor,fx,fy){
   const z=ZS[svg.id]||(ZS[svg.id]={k:1,cx:.5,cy:.5});
@@ -982,7 +983,8 @@ for(const id of ZOOM_IDS){
   const svg=$(id), cad=svg.parentElement;
   const bar=document.createElement('div'); bar.className='zbar';
   bar.innerHTML='<button type="button" class="zo" aria-label="縮小" title="縮小">−</button><span class="zp">100%</span><button type="button" class="zi" aria-label="放大" title="放大">+</button><button type="button" class="zr" aria-label="還原原始大小" title="還原原始大小" disabled>還原</button>';
-  cad.appendChild(bar);
+  bar.dataset.for=id;
+  const head=cad.closest('.view').querySelector('h3'); head.appendChild(bar);
   bar.querySelector('.zi').addEventListener('click',()=>zoomAt(svg,1.4,.5,.5));
   bar.querySelector('.zo').addEventListener('click',()=>zoomAt(svg,1/1.4,.5,.5));
   bar.querySelector('.zr').addEventListener('click',()=>{ZS[id]={k:1,cx:.5,cy:.5};applyZoom(svg);});
