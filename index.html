@@ -3,142 +3,131 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="description" content="三相馬達繞組電阻估算：Y／Δ 端子電阻換算、銅線溫度修正、電流密度與銅損、互動溫度曲線與電阻法溫升反算。">
-<style>html{-webkit-text-size-adjust:100%}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
-<title>繞組電阻速算</title>
+<meta name="description" content="馬達繞組電阻計算：依齒部尺寸與絕緣厚度即時繪出導線排列，逐層累加線長求平均匝長 MLT，並算出相電阻與端子間電阻。">
+<title>電阻計算</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
-/* Layout: 頁首（標題＋明暗切換）→ 兩欄：左為依序步驟（每步 輸入｜示意圖），右為 sticky 結果 → 全寬互動溫度曲線 */
+/* Layout: 頁首（工具切換＋明暗）→ 左欄輸入、右欄（結果數字→兩張即時 CAD 視圖→明細與逐層表）；窄螢幕單欄 */
 :root{
   --bg:#edf0f2; --panel:#ffffff; --sunk:#f4f6f7; --ink:#1b2328; --muted:#5a6870; --line:#d4dbdf;
-  --copper:#a8541c; --copper-soft:#f6e7dc; --steel:#2f5d7c; --steel-soft:#e1ebf2; --enamel:#c99a2e;
-  --warn:#b3261e; --ok:#2e7d4f; --on-accent:#ffffff; --shadow:0 8px 28px rgba(20,30,40,.16);
+  --copper:#a8541c; --copper-2:#c97a3f; --copper-soft:#f6e7dc; --steel:#2f5d7c; --steel-fill:#d9e5ee; --enamel:#c99a2e; --ins:#e9c46a;
+  --warn:#b3261e; --ok:#2e7d4f; --on-accent:#ffffff; --shadow:0 8px 28px rgba(20,30,40,.16); --grid:#e6ebee;
   --f-body:"Noto Sans TC",system-ui,"PingFang TC","Microsoft JhengHei",sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#111619; --panel:#192024; --sunk:#141a1d; --ink:#e3e8eb; --muted:#94a2aa; --line:#2c363c;
-  --copper:#e48f52; --copper-soft:#3a291d; --steel:#82b4d6; --steel-soft:#1d2d38; --enamel:#d9b25a;
-  --warn:#f2867d; --ok:#7cc89a; --on-accent:#1a1209; --shadow:0 8px 28px rgba(0,0,0,.5); color-scheme:dark}}
+  --copper:#e48f52; --copper-2:#b8662f; --copper-soft:#3a291d; --steel:#82b4d6; --steel-fill:#24384a; --enamel:#d9b25a; --ins:#8a6d22;
+  --warn:#f2867d; --ok:#7cc89a; --on-accent:#1a1209; --shadow:0 8px 28px rgba(0,0,0,.5); --grid:#1f282d; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#111619; --panel:#192024; --sunk:#141a1d; --ink:#e3e8eb; --muted:#94a2aa; --line:#2c363c;
-  --copper:#e48f52; --copper-soft:#3a291d; --steel:#82b4d6; --steel-soft:#1d2d38; --enamel:#d9b25a;
-  --warn:#f2867d; --ok:#7cc89a; --on-accent:#1a1209; --shadow:0 8px 28px rgba(0,0,0,.5); color-scheme:dark}
+  --copper:#e48f52; --copper-2:#b8662f; --copper-soft:#3a291d; --steel:#82b4d6; --steel-fill:#24384a; --enamel:#d9b25a; --ins:#8a6d22;
+  --warn:#f2867d; --ok:#7cc89a; --on-accent:#1a1209; --shadow:0 8px 28px rgba(0,0,0,.5); --grid:#1f282d; color-scheme:dark}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
-.wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:20px 56px}
-nav.tools{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
-nav.tools a{font-size:.85rem;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
-nav.tools a[aria-current="page"]{background:var(--copper);border-color:var(--copper);color:var(--on-accent);font-weight:500}
-nav.tools a:hover:not([aria-current]){border-color:var(--muted);color:var(--ink)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+[hidden]{display:none!important}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:18px 56px}
 header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
-header.top h1{font-size:1.65rem;margin:0;font-weight:700;letter-spacing:.01em;text-wrap:balance}
-header.top p{margin:.3rem 0 0;color:var(--muted);max-width:62ch;font-size:.92rem}
+header.top h1{font-size:1.65rem;margin:0;font-weight:700;text-wrap:balance}
+header.top p{margin:.3rem 0 0;color:var(--muted);max-width:66ch;font-size:.92rem}
 .theme{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:3px;gap:2px}
 .theme button{font:inherit;font-size:.82rem;border:0;background:transparent;color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .theme svg{width:14px;height:14px}
 
-.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,380px);gap:22px;margin-top:22px;align-items:start}
-@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
-.steps{display:flex;flex-direction:column;gap:16px;min-width:0}
-section.step{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px 18px;min-width:0}
-.step h2{display:flex;align-items:baseline;gap:10px;margin:0 0 12px;font-size:1.05rem;font-weight:700}
-.step h2 .n{font-family:var(--f-mono);font-size:.8rem;color:var(--copper);border:1px solid var(--copper);border-radius:4px;padding:0 6px;line-height:1.5}
-.step h2 small{font-weight:400;color:var(--muted);font-size:.82rem}
-.split{display:grid;grid-template-columns:minmax(0,1fr) 210px;gap:18px;align-items:start}
-@media (max-width:620px){.split{grid-template-columns:minmax(0,1fr)}.split figure{max-width:300px;width:100%;justify-self:center}}
-.fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px 16px;min-width:0}
-.f{display:flex;flex-direction:column;gap:4px;min-width:0}
-.f .lab{display:flex;align-items:center;gap:6px;font-size:.84rem;font-weight:500;min-height:20px}
-.tx{white-space:nowrap}
+.grid{display:grid;grid-template-columns:minmax(0,350px) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.inputs{display:flex;flex-direction:column;gap:14px;min-width:0}
+section.step{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px 16px;min-width:0}
+.step h2{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;font-size:1rem;font-weight:700}
+.step h2 .n{font-family:var(--f-mono);font-size:.78rem;color:var(--copper);border:1px solid var(--copper);border-radius:4px;padding:0 6px;line-height:1.5}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f.full{grid-column:1/-1}
+.lab{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:500;min-height:20px}
+.lab .tx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab .u{color:var(--muted);font-weight:400;font-family:var(--f-mono);font-size:.74rem;margin-left:auto}
 sub{font-size:.72em;vertical-align:-.25em;line-height:0}
-.f .lab .u{color:var(--muted);font-weight:400;font-family:var(--f-mono);font-size:.76rem;margin-left:auto}
-input,select{font-family:var(--f-mono);font-size:.95rem;padding:8px 9px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
-input:hover,select:hover{border-color:var(--muted)}
+input,select{font-family:var(--f-mono);font-size:.93rem;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
+input:hover{border-color:var(--muted)}
 :focus-visible{outline:2px solid var(--copper);outline-offset:2px}
-figure{margin:0;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:10px}
-figure svg{display:block;width:100%;height:auto}
-figcaption{font-size:.76rem;color:var(--muted);margin-top:6px;line-height:1.45}
-svg text{font-family:var(--f-mono);font-size:10px;fill:var(--muted)}
-.note{font-size:.8rem;color:var(--muted);margin:12px 0 0;max-width:70ch}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-bottom:12px}
-.seg button{font:inherit;font-size:.88rem;border:0;background:var(--panel);color:var(--muted);padding:7px 16px;cursor:pointer}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{flex:1;font:inherit;font-size:.84rem;border:0;background:var(--panel);color:var(--muted);padding:6px 8px;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--copper);color:var(--on-accent);font-weight:500}
-
-.info{flex:none;width:18px;height:18px;border-radius:50%;border:1px solid var(--steel);background:transparent;color:var(--steel);font:600 11px/1 var(--f-mono);cursor:pointer;display:inline-grid;place-items:center;padding:0}
+.note{font-size:.78rem;color:var(--muted);margin:10px 0 0}
+.info{flex:none;width:17px;height:17px;border-radius:50%;border:1px solid var(--steel);background:transparent;color:var(--steel);font:600 10px/1 var(--f-mono);cursor:pointer;display:inline-grid;place-items:center;padding:0}
 .info:hover,.info[aria-expanded="true"]{background:var(--steel);color:var(--panel)}
 
-aside.result{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:14px;min-width:0}
+.right{display:flex;flex-direction:column;gap:16px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0}
-.hero{border-top:4px solid var(--copper)}
-.eyebrow{font-size:.74rem;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:6px}
-.val{font-family:var(--f-mono);font-size:2.1rem;font-weight:600;color:var(--copper);font-variant-numeric:tabular-nums;line-height:1.2;margin-top:2px}
-.val small{font-size:.85rem;color:var(--muted);font-weight:400}
-.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
-.pair .v{font-family:var(--f-mono);font-size:1.15rem;font-weight:600;font-variant-numeric:tabular-nums}
-.k{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.9rem}
-.k td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0;overflow:hidden;border-top:4px solid var(--copper)}
+.kpis>div{padding:14px 16px;min-width:0}
+.kpis>div+div{border-left:1px solid var(--line)}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
+.eyebrow{font-size:.74rem;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:6px}
+.big{font-family:var(--f-mono);font-size:1.55rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:2px;white-space:nowrap}
+.big small{font-size:.8rem;color:var(--muted);font-weight:400}
+.big.cu{color:var(--copper)}
+.views{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px}
+@media (max-width:720px){.views{grid-template-columns:minmax(0,1fr)}}
+.view h3{margin:0;font-size:.92rem;font-weight:700;display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.view h3 span{font-weight:400;font-size:.76rem;color:var(--muted)}
+.cad{margin-top:8px;background:var(--sunk);border:1px solid var(--line);border-radius:6px;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:16px 16px}
+.cad svg{display:block;width:100%;height:auto}
+.cad text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.cad .dimt{fill:var(--ink);font-size:12px;font-weight:600}
+@media (max-width:560px){.cad text{font-size:17px}.cad .dimt{font-size:18px}}
+.cad .lay{transition:opacity .15s}
+.cad.focus .lay{opacity:.18}
+.cad.focus .lay.on{opacity:1}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.76rem;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px}
+@media (max-width:820px){.cols{grid-template-columns:minmax(0,1fr)}}
+.card h3{margin:0 0 8px;font-size:.95rem}
+.k{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
+.k td{padding:6px 0;border-bottom:1px solid var(--line)}
 .k td:first-child{color:var(--muted)}
-.k td:first-child>span{display:inline-flex;align-items:center;gap:6px}
-.k td:last-child{text-align:right;font-family:var(--f-mono);color:var(--ink)}
+.k td:last-child{text-align:right;font-family:var(--f-mono)}
 .k tr:last-child td{border-bottom:0}
-.k .grp td{text-align:left!important;font-family:var(--f-body)!important;padding-top:12px;font-size:.72rem;letter-spacing:.08em;color:var(--copper);border-bottom:0}
+.k .grp td{padding-top:12px;font-size:.72rem;letter-spacing:.08em;color:var(--copper);border-bottom:0;text-align:left;font-family:var(--f-body)}
 .chip{display:inline-block;font:500 .7rem var(--f-body);padding:1px 8px;border-radius:10px;margin-left:6px;vertical-align:1px}
 .chip.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
 .chip.mid{color:var(--copper);background:var(--copper-soft)}
 .chip.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 14%,transparent)}
-.warnline{color:var(--warn);font-size:.8rem;margin:8px 0 0}
-.out{font-family:var(--f-mono);font-size:.88rem;background:var(--sunk);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-top:12px;display:grid;grid-template-columns:auto 1fr;gap:4px 16px}
-.out span:nth-child(even){text-align:right;color:var(--ink);font-weight:600}
-.out span:nth-child(odd){color:var(--muted);font-family:var(--f-body)}
+.msgs{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.msgs li{font-size:.84rem;padding:8px 10px;border-radius:6px;border:1px solid var(--line);background:var(--sunk)}
+.msgs li.warn{border-color:color-mix(in srgb,var(--warn) 45%,transparent);color:var(--warn)}
+.msgs li.ok{color:var(--ok)}
+.tblwrap{max-height:340px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.lt{width:100%;border-collapse:collapse;font-family:var(--f-mono);font-size:.8rem;font-variant-numeric:tabular-nums}
+.lt th{position:sticky;top:0;background:var(--panel);font:500 .74rem var(--f-body);color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+.lt td{text-align:right;padding:4px 8px;border-bottom:1px dashed var(--line);cursor:pointer}
+.lt th:first-child,.lt td:first-child{text-align:left}
+.lt tr:hover td,.lt tr.on td{background:var(--copper-soft)}
+.lt tfoot td{font-weight:600;border-top:1px solid var(--line);border-bottom:0;cursor:default;background:var(--panel);position:sticky;bottom:0}
+details summary{cursor:pointer;font-weight:500}
+pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);padding:10px 12px;border-radius:6px;overflow-x:auto;margin:10px 0 0;line-height:1.7}
 
-.chartsec{margin-top:22px}
-.chartsec h2{margin:0 0 4px;font-size:1.05rem}
-.chartsec .sub{margin:0 0 12px;color:var(--muted);font-size:.85rem}
-.chartlay{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:18px;align-items:start}
-@media (max-width:760px){.chartlay{grid-template-columns:minmax(0,1fr)}}
-.chartbox{overflow-x:auto}
-#chart{width:100%;min-width:0;height:auto;display:block;touch-action:none;cursor:crosshair}
-#chart:focus-visible{outline-offset:4px}
-@media (max-width:560px){#chart text{font-size:15px}}
-.probe{display:flex;flex-direction:column;gap:10px}
-.probe .big{font-family:var(--f-mono);font-size:1.6rem;font-weight:600;color:var(--copper)}
-.probe .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pinbtn{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:5px;padding:6px 10px;cursor:pointer}
-.tbl{width:100%;border-collapse:collapse;font-family:var(--f-mono);font-size:.82rem;font-variant-numeric:tabular-nums}
-.tbl th{font:500 .74rem var(--f-body);color:var(--muted);text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
-.tbl th:first-child,.tbl td:first-child{text-align:left}
-.tbl td{text-align:right;padding:4px 6px;border-bottom:1px dashed var(--line);cursor:pointer}
-.tbl tr:hover td,.tbl tr.on td{background:var(--copper-soft)}
-
-details.card summary{cursor:pointer;font-weight:500}
-pre.formula{font-family:var(--f-mono);font-size:.8rem;color:var(--ink);background:var(--sunk);padding:10px 12px;border-radius:6px;overflow-x:auto;margin:10px 0 0;line-height:1.7}
-
-/* popover */
 #pop{position:fixed;z-index:50;width:min(340px,calc(100vw - 32px));background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:8px;box-shadow:var(--shadow);padding:14px 16px 12px}
-#pop h3{margin:0 0 8px;padding-right:22px;font-size:.98rem;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
-#pop h3 em{font-style:normal;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);font-weight:400}
+#pop h4{margin:0 0 8px;padding-right:22px;font-size:.96rem;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline}
+#pop h4 em{font-style:normal;font-family:var(--f-mono);font-size:.76rem;color:var(--muted);font-weight:400}
 #pop p{margin:0 0 8px;font-size:.86rem;line-height:1.6}
 #pop .eq{font-family:var(--f-mono);font-size:.8rem;line-height:1.7;background:var(--sunk);border-radius:4px;padding:6px 8px;margin:4px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 #pop .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:4px}
 @media (prefers-reduced-motion:no-preference){#pop{animation:pin .14s ease-out}@keyframes pin{from{opacity:0;transform:translateY(4px)}}}
 </style>
-
 </head>
 <body>
 <div class="wrap">
-<nav class="tools" aria-label="工具">
-  <a href="https://siderpan.github.io/winding-resistance-calculator/" aria-current="page">繞組電阻速算</a>
-  <a href="https://siderpan.github.io/winding-resistance-calculator/mlt.html">MLT 排線計算</a>
-</nav>
 <header class="top">
   <div>
-    <h1>馬達繞組電阻速算</h1>
-    <p>依序填入導線、繞組、匝長與接線條件，右側即時算出端子間電阻與工作溫度下的數值。預設值為 12 槽集中繞外轉子風扇馬達範例。點 <b style="color:var(--steel)">?</b> 可查看名詞定義。</p>
+    <h1>電阻計算</h1>
+    <p>輸入齒部尺寸、絕緣與導線規格，下方即時畫出每一層導線的實際排列位置，逐層累加線長求出平均匝長 MLT 與電阻。預設值為 12 槽集中繞風扇馬達範例。</p>
   </div>
   <div class="theme" role="group" aria-label="頁面明暗">
     <button type="button" data-t="light" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>淺色</button>
@@ -148,151 +137,109 @@ pre.formula{font-family:var(--f-mono);font-size:.8rem;color:var(--ink);backgroun
 </header>
 
 <div class="grid">
-<div class="steps">
-
-<section class="step" aria-labelledby="h1">
-  <h2 id="h1"><span class="n">1</span>導線規格</h2>
-  <div class="split">
-    <div>
-      <div class="fields">
-        <div class="f"><label class="lab" for="d">裸銅線徑 d <button class="info" data-k="d" type="button">?</button><span class="u">mm</span></label><input id="d" type="number" step="0.01" min="0.02" value="0.35"></div>
-        <div class="f"><label class="lab" for="awg">由 AWG 帶入 <button class="info" data-k="awg" type="button">?</button></label><select id="awg"><option value="">手動輸入</option></select></div>
-        <div class="f"><label class="lab" for="ns">並繞股數 n<sub>s</sub> <button class="info" data-k="ns" type="button">?</button><span class="u">股</span></label><input id="ns" type="number" min="1" max="20" step="1" value="1"></div>
-        <div class="f"><label class="lab" for="rho">電阻率 ρ₂₀ <button class="info" data-k="rho" type="button">?</button><span class="u">Ω·mm²/m</span></label><input id="rho" type="number" step="0.0001" value="0.017241"></div>
-      </div>
+<div class="inputs">
+  <section class="step">
+    <h2><span class="n">1</span>定子齒部</h2>
+    <div class="fields">
+      <div class="f"><label class="lab" for="L"><span class="tx">疊厚 L</span><button class="info" data-k="L" type="button">?</button><span class="u">mm</span></label><input id="L" type="number" step="0.1" min="0.1" value="15"></div>
+      <div class="f"><label class="lab" for="b"><span class="tx">齒寬 b</span><button class="info" data-k="b" type="button">?</button><span class="u">mm</span></label><input id="b" type="number" step="0.1" min="0.1" value="4"></div>
+      <div class="f full"><label class="lab" for="h"><span class="tx">可繞線高度 h</span><button class="info" data-k="h" type="button">?</button><span class="u">mm</span></label><input id="h" type="number" step="0.1" min="0.05" value="6"></div>
     </div>
-    <figure><svg id="figWire" viewBox="0 0 200 118" role="img" aria-label="導線截面示意"></svg><figcaption>截面：銅導體（d）外覆漆膜。多股並繞時每股同線徑，視為並聯。</figcaption></figure>
-  </div>
-</section>
+  </section>
 
-<section class="step" aria-labelledby="h2">
-  <h2 id="h2"><span class="n">2</span>繞組配置<small>每相</small></h2>
-  <div class="split">
-    <div>
-      <div class="fields">
-        <div class="f"><label class="lab" for="N">每線圈匝數 N <button class="info" data-k="N" type="button">?</button><span class="u">匝</span></label><input id="N" type="number" min="1" step="1" value="60"></div>
-        <div class="f"><label class="lab" for="cpp">每相線圈數 <button class="info" data-k="cpp" type="button">?</button><span class="u">個</span></label><input id="cpp" type="number" min="1" max="24" step="1" value="4"></div>
-        <div class="f"><label class="lab" for="a">並聯路數 a <button class="info" data-k="a" type="button">?</button><span class="u">路</span></label><input id="a" type="number" min="1" max="12" step="1" value="1"></div>
-        <div class="f"><label class="lab" for="lead">引出線長 <button class="info" data-k="lead" type="button">?</button><span class="u">mm／路</span></label><input id="lead" type="number" min="0" step="1" value="40"></div>
-      </div>
-      <p class="warnline" id="cppWarn" hidden>每相線圈數必須能被並聯路數整除。</p>
+  <section class="step">
+    <h2><span class="n">2</span>絕緣</h2>
+    <div class="fields">
+      <div class="f"><label class="lab" for="i"><span class="tx">絕緣厚 i</span><button class="info" data-k="i" type="button">?</button><span class="u">mm</span></label><input id="i" type="number" step="0.01" min="0" value="0.3"></div>
+      <div class="f"><label class="lab" for="r0"><span class="tx">轉角半徑 r<sub>0</sub></span><button class="info" data-k="r0" type="button">?</button><span class="u">mm</span></label><input id="r0" type="number" step="0.05" min="0" value="0.5"></div>
+      <div class="f full"><label class="lab" for="tmax"><span class="tx">單邊可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm，0 = 不限</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
     </div>
-    <figure><svg id="figPath" viewBox="0 0 200 130" role="img" aria-label="每相線圈串並聯示意"></svg><figcaption id="capPath"></figcaption></figure>
-  </div>
-</section>
+  </section>
 
-<section class="step" aria-labelledby="h3">
-  <h2 id="h3"><span class="n">3</span>平均匝長 MLT <button class="info" data-k="mlt" type="button">?</button></h2>
-  <div class="seg" role="group" aria-label="MLT 輸入方式">
-    <button type="button" id="mltGeo" aria-pressed="true">集中繞：由齒部幾何估算</button>
-    <button type="button" id="mltDir" aria-pressed="false">直接輸入</button>
-  </div>
-  <div class="split">
-    <div>
-      <div class="fields" id="geoRow">
-        <div class="f"><label class="lab" for="L">鐵芯疊厚 L <button class="info" data-k="L" type="button">?</button><span class="u">mm</span></label><input id="L" type="number" step="0.1" value="15"></div>
-        <div class="f"><label class="lab" for="b">齒寬 b <button class="info" data-k="b" type="button">?</button><span class="u">mm</span></label><input id="b" type="number" step="0.1" value="4"></div>
-        <div class="f"><label class="lab" for="ins">絕緣厚 i <button class="info" data-k="ins" type="button">?</button><span class="u">mm</span></label><input id="ins" type="number" step="0.05" value="0.5"></div>
-        <div class="f"><label class="lab" for="t">線圈堆疊厚 t <button class="info" data-k="t" type="button">?</button><span class="u">mm</span></label><input id="t" type="number" step="0.1" value="3"></div>
-      </div>
-      <div class="fields" id="dirRow" hidden>
-        <div class="f"><label class="lab" for="mlt">MLT <button class="info" data-k="mlt" type="button">?</button><span class="u">mm</span></label><input id="mlt" type="number" step="0.1" value="50"></div>
-      </div>
-      <p class="note" id="mltNote">MLT = 2(L+2i) + 2(b+2i) + π·t，取線圈厚度中心線的圓角矩形周長。</p>
+  <section class="step">
+    <h2><span class="n">3</span>導線與排線</h2>
+    <div class="fields">
+      <div class="f"><label class="lab" for="d"><span class="tx">裸銅線徑 d</span><button class="info" data-k="d" type="button">?</button><span class="u">mm</span></label><input id="d" type="number" step="0.01" min="0.01" value="0.35"></div>
+      <div class="f"><label class="lab" for="dout"><span class="tx">完成外徑 d<sub>o</sub></span><button class="info" data-k="dout" type="button">?</button><span class="u">mm</span></label><input id="dout" type="number" step="0.001" min="0.01" value="0.395"></div>
+      <div class="f"><label class="lab" for="N"><span class="tx">每線圈匝數 N</span><button class="info" data-k="N" type="button">?</button><span class="u">匝</span></label><input id="N" type="number" step="1" min="1" value="60"></div>
+      <div class="f"><label class="lab" for="ns"><span class="tx">並繞股數 n<sub>s</sub></span><button class="info" data-k="ns" type="button">?</button><span class="u">股</span></label><input id="ns" type="number" step="1" min="1" max="20" value="1"></div>
+      <div class="f full"><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
+        <div class="seg" role="group" aria-label="排線方式"><button type="button" id="pSq" aria-pressed="true">整齊方格</button><button type="button" id="pOr" aria-pressed="false">正交嵌入</button></div></div>
+      <div class="f full"><label class="lab" for="g"><span class="tx">排線鬆散係數 g</span><button class="info" data-k="g" type="button">?</button><span class="u">1.00 = 完美</span></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
     </div>
-    <figure><svg id="figTooth" viewBox="0 0 200 150" role="img" aria-label="齒部與線圈俯視示意"></svg><figcaption id="capTooth">從齒頂往下看（L 為軸向）：齒（藍）、絕緣（黃）、線圈（銅色）。虛線為平均匝長路徑。</figcaption></figure>
-  </div>
-</section>
+  </section>
 
-<section class="step" aria-labelledby="h4">
-  <h2 id="h4"><span class="n">4</span>接線與運轉條件</h2>
-  <div class="seg" role="group" aria-label="接線方式">
-    <button type="button" id="cY" aria-pressed="true">Y 星形</button>
-    <button type="button" id="cD" aria-pressed="false">Δ 三角形</button>
-  </div>
-  <div class="split">
-    <div>
-      <div class="fields">
-        <div class="f"><label class="lab" for="Tref">參考溫度 <button class="info" data-k="Tref" type="button">?</button><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="25"></div>
-        <div class="f"><label class="lab" for="Top">工作溫度 <button class="info" data-k="Top" type="button">?</button><span class="u">°C</span></label><input id="Top" type="number" step="1" value="110"></div>
-        <div class="f"><label class="lab" for="I">線電流 I<sub>L</sub> (RMS) <button class="info" data-k="IL" type="button">?</button><span class="u">A</span></label><input id="I" type="number" step="0.01" value="0.6"></div>
-      </div>
-      <p class="note" id="connNote"></p>
+  <section class="step">
+    <h2><span class="n">4</span>繞組、接線與溫度</h2>
+    <div class="fields">
+      <div class="f"><label class="lab" for="cpp"><span class="tx">每相線圈數</span><button class="info" data-k="cpp" type="button">?</button><span class="u">個</span></label><input id="cpp" type="number" step="1" min="1" value="4"></div>
+      <div class="f"><label class="lab" for="a"><span class="tx">並聯路數 a</span><button class="info" data-k="a" type="button">?</button><span class="u">路</span></label><input id="a" type="number" step="1" min="1" value="1"></div>
+      <div class="f"><label class="lab" for="lead"><span class="tx">引出線長</span><button class="info" data-k="lead" type="button">?</button><span class="u">mm／路</span></label><input id="lead" type="number" step="1" min="0" value="40"></div>
+      <div class="f"><label class="lab" for="rho"><span class="tx">ρ<sub>20</sub></span><button class="info" data-k="rho" type="button">?</button><span class="u">Ω·mm²/m</span></label><input id="rho" type="number" step="0.0001" value="0.017241"></div>
+      <div class="f full"><span class="lab"><span class="tx">接線方式</span></span>
+        <div class="seg" role="group" aria-label="接線方式"><button type="button" id="cY" aria-pressed="true">Y 星形</button><button type="button" id="cD" aria-pressed="false">Δ 三角形</button></div></div>
+      <div class="f"><label class="lab" for="Tref"><span class="tx">參考溫度</span><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="25"></div>
+      <div class="f"><label class="lab" for="Top"><span class="tx">工作溫度</span><span class="u">°C</span></label><input id="Top" type="number" step="1" value="110"></div>
     </div>
-    <figure><svg id="figConn" viewBox="0 0 200 140" role="img" aria-label="接線與量測示意"></svg><figcaption>藍色虛線為電表接在 U、V 兩端子時的量測迴路。</figcaption></figure>
-  </div>
-</section>
-
-<section class="step" aria-labelledby="h5">
-  <h2 id="h5"><span class="n">5</span>實測反算溫升 <button class="info" data-k="rise" type="button">?</button><small>選填</small></h2>
-  <div class="fields">
-    <div class="f"><label class="lab" for="Rc">冷態 R<sub>LL</sub><span class="u">Ω</span></label><input id="Rc" type="number" step="0.001" value="4.50"></div>
-    <div class="f"><label class="lab" for="Tc">冷態溫度<span class="u">°C</span></label><input id="Tc" type="number" step="0.1" value="25"></div>
-    <div class="f"><label class="lab" for="Rh">熱態 R<sub>LL</sub><span class="u">Ω</span></label><input id="Rh" type="number" step="0.001" value="5.75"></div>
-    <div class="f"><label class="lab" for="Ta">熱態時環境溫度<span class="u">°C</span></label><input id="Ta" type="number" step="0.1" value="25"></div>
-  </div>
-  <div class="out" id="rev"></div>
-</section>
-
+  </section>
 </div>
 
-<aside class="result" aria-live="polite">
-  <div class="card hero">
-    <div class="eyebrow">端子間電阻 R<sub>LL</sub> <button class="info" data-k="RLL" type="button">?</button></div>
-    <div class="val" id="oLLref">—</div>
-    <div class="pair">
-      <div><div class="eyebrow">工作溫度時 R<sub>LL</sub></div><div class="v" id="oLLop">—</div></div>
-      <div><div class="eyebrow">每相 R<sub>ph</sub> <button class="info" data-k="Rph" type="button">?</button></div><div class="v" id="oPh">—</div></div>
-    </div>
+<div class="right">
+  <div class="card kpis" aria-live="polite">
+    <div><div class="eyebrow"><span>端子間電阻 R<sub>LL</sub></span><button class="info" data-k="RLL" type="button">?</button></div><div class="big cu" id="kRLL">—</div></div>
+    <div><div class="eyebrow"><span>工作溫度 R<sub>LL</sub></span></div><div class="big" id="kRLLop">—</div></div>
+    <div><div class="eyebrow"><span>平均匝長 MLT</span><button class="info" data-k="mlt" type="button">?</button></div><div class="big" id="kMLT">—</div></div>
+    <div><div class="eyebrow">每線圈線長</div><div class="big" id="kLen">—</div></div>
   </div>
+
   <div class="card">
-    <table class="k">
-      <tr class="grp"><td colspan="2">幾何與導線</td></tr>
-      <tr><td>MLT</td><td id="oMLT"></td></tr>
-      <tr><td>每相導線長度</td><td id="oLen"></td></tr>
-      <tr><td>單股截面積 A</td><td id="oA"></td></tr>
-      <tr><td>三相總銅重</td><td id="oW"></td></tr>
-      <tr class="grp"><td colspan="2">電阻</td></tr>
-      <tr><td>R<sub>ph</sub> @ 20 °C</td><td id="oPh20"></td></tr>
-      <tr><td>R<sub>ph</sub> @ 工作溫度</td><td id="oPhOp"></td></tr>
-      <tr class="grp"><td colspan="2">電流與損耗</td></tr>
-      <tr><td><span><span class="tx">電流密度 J</span><button class="info" data-k="J" type="button">?</button></span></td><td id="oJ"></td></tr>
-      <tr><td><span><span class="tx">銅損 P<sub>Cu</sub></span><button class="info" data-k="Pcu" type="button">?</button></span></td><td id="oP"></td></tr>
-    </table>
-  </div>
-  <details class="card">
-    <summary>計算式</summary>
-<pre class="formula">A    = π/4 · d²
-ℓpath= N · (線圈數/a) · MLT + 引出線
-Rph  = ρ · ℓpath / (A · ns · a)
-R(T) = R20 · (234.5+T) / 254.5
-Y : RLL = 2·Rph     Iph = IL
-Δ : RLL = ⅔·Rph     Iph = IL/√3
-PCu  = 3·Iph²·Rph = 1.5·IL²·RLL</pre>
-  </details>
-</aside>
-</div>
-
-<section class="card chartsec" aria-labelledby="hc">
-  <h2 id="hc">溫度與電阻 <button class="info" data-k="alpha" type="button">?</button></h2>
-  <p class="sub">滑過或點擊曲線查看任一溫度的電阻值；點擊可固定讀值，也可用方向鍵（←→ 1 °C，Shift 加 10 °C）微調。</p>
-  <div class="chartlay">
-    <div class="chartbox"><svg id="chart" viewBox="0 0 560 280" tabindex="0" role="img" aria-label="R_LL 對溫度曲線，可互動查詢"></svg></div>
-    <div class="probe">
-      <div>
-        <div class="eyebrow" id="pState">游標讀值</div>
-        <div class="big" id="pR">—</div>
+    <div class="views">
+      <div class="view">
+        <h3>剖面 A–A<span>垂直於疊厚方向切開齒部</span></h3>
+        <div class="cad" id="cadA"><svg id="svgA" viewBox="0 0 560 420" role="img" aria-label="齒部剖面與導線排列"></svg></div>
       </div>
-      <div class="out" id="pOut" style="margin-top:0"></div>
-      <div class="f"><label class="lab" for="qT">查詢溫度<span class="u">°C</span></label><input id="qT" type="number" step="1" value="80"></div>
-      <button type="button" class="pinbtn" id="unpin">解除固定</button>
+      <div class="view">
+        <h3>頂視<span>從齒頂沿齒向下看</span></h3>
+        <div class="cad" id="cadB"><svg id="svgB" viewBox="0 0 380 420" role="img" aria-label="各層匝路徑頂視"></svg></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--steel-fill);border:1px solid var(--steel)"></i>齒（矽鋼片）</span>
+      <span><i style="background:var(--ins)"></i>絕緣</span>
+      <span><i style="background:var(--copper)"></i><i style="background:var(--copper-2);margin-left:-3px"></i>導線（奇偶層交替色）</span>
+      <span><i style="background:transparent;border:1.5px dashed var(--ink)"></i>平均匝路徑</span>
+      <span><i style="background:transparent;border:1.5px dashed var(--warn)"></i>可用厚度上限</span>
+    </div>
+    <p class="note">游標移到下方逐層表的任一列，兩張圖會凸顯該層位置。</p>
+  </div>
+
+  <div class="cols">
+    <div class="card">
+      <h3>計算明細</h3>
+      <table class="k" id="detail"></table>
+      <ul class="msgs" id="msgs" style="margin-top:12px"></ul>
+    </div>
+    <div class="card">
+      <h3>逐層線長</h3>
+      <div class="tblwrap"><table class="lt" id="lt"></table></div>
+      <details style="margin-top:12px">
+        <summary>計算式</summary>
+<pre class="formula">L' = L + 2i     b' = b + 2i
+第 k 層中心距絕緣面 c_k = d_o/2 + k·p_r
+整齊方格 p_r = g·d_o   正交嵌入 p_r = 0.866·g·d_o
+每層可排根數 n = ⌊(h − d_o)/(g·d_o)⌋ + 1（正交奇數層 n−1）
+每匝長 ℓ_k = 2(L'−2r₀) + 2(b'−2r₀) + 2π(r₀ + c_k)
+每股線長 = Σ(ℓ_k × 該層根數) ÷ n_s
+MLT = 每股線長 ÷ N
+R_coil = ρ · 每股線長 / (A · n_s)
+R_ph = [R_coil · 線圈數/a + ρ·引出線/(A·n_s)] / a
+Y：R_LL = 2·R_ph    Δ：R_LL = ⅔·R_ph
+R(T) = R₂₀ · (234.5+T)/254.5</pre>
+      </details>
     </div>
   </div>
-  <details style="margin-top:14px">
-    <summary style="cursor:pointer;font-weight:500;font-size:.9rem">對照表（每 20 °C，點列可定位）</summary>
-    <div style="overflow-x:auto;margin-top:8px"><table class="tbl" id="tbl"></table></div>
-  </details>
-</section>
+</div>
+</div>
 </div>
 
 <div id="pop" role="dialog" aria-modal="false" hidden><button class="x" type="button" aria-label="關閉">×</button><div id="popBody"></div></div>
@@ -301,8 +248,6 @@ PCu  = 3·Iph²·Rph = 1.5·IL²·RLL</pre>
 (function(){
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
-
-/* ---------- theme ---------- */
 function setTheme(t){
   if(t==='auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme',t);
   document.querySelectorAll('.theme button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t));
@@ -311,49 +256,40 @@ function setTheme(t){
 document.querySelectorAll('.theme button').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.t)));
 try{const s=localStorage.getItem('wr-theme'); if(s) setTheme(s);}catch(e){}
 
-/* ---------- wrap label text so <sub> doesn't become a separate flex item ---------- */
-document.querySelectorAll('.lab, .eyebrow').forEach(el=>{
-  const sp=document.createElement('span');sp.className='tx';
-  while(el.firstChild&&!(el.firstChild.nodeType===1&&(el.firstChild.classList.contains('info')||el.firstChild.classList.contains('u')))){sp.appendChild(el.firstChild);}
-  if(sp.textContent.trim())el.insertBefore(sp,el.firstChild);
-});
 /* ---------- glossary ---------- */
 const G={
-  d:['裸銅線徑','d','漆包線去除漆膜後的銅導體直徑。線材規格表常同時列「導體徑」與「完成外徑」，計算電阻用導體徑；槽滿率才用完成外徑。'],
-  awg:['AWG','American Wire Gauge','美規線號，號數越大線越細。每減 3 號截面積約加倍。換算：d = 0.127 × 92^((36−n)/39) mm。'],
-  ns:['並繞股數','nₛ','同一匝用幾根細線一起繞（多股並繞）。等效截面積 = nₛ × 單股截面積。常用來以細線取代粗線，降低繞線難度與集膚效應。'],
-  rho:['電阻率','ρ₂₀','材料在 20 °C 時、截面 1 mm²、長 1 m 的電阻。IACS 100% 退火銅為 0.017241 Ω·mm²/m。漆包線因拉伸加工硬化，實際常落在 0.0170–0.0176。'],
-  N:['每線圈匝數','N','單一線圈（一顆齒上或一組線槽中）繞了幾圈。並繞時，多股一起算一匝。'],
-  cpp:['每相線圈數','','一相繞組包含幾個線圈。三相集中繞：槽數 ÷ 3。例如 12 槽 → 每相 4 個；9 槽 → 每相 3 個。'],
-  a:['並聯路數','a','每相線圈分成幾條並聯支路。a = 1 為全部串聯；a = 2 為兩組各半數線圈串聯後再並聯。電阻與 a² 成反比：路數加倍、電阻變 ¼。'],
-  lead:['引出線','','從繞組到端子或 PCB 焊點的導線長度，每條支路各算一次。短線影響小，但小馬達低匝數時不可忽略。'],
-  mlt:['平均匝長','MLT, Mean Length of Turn','一匝導線的平均長度。線圈由內往外越繞越長，取厚度中心處的周長作代表。每相導線長 ≈ 匝數 × MLT。\n集中繞可由齒部幾何估算；分佈繞約為 2 × 疊厚 + 2 × 端部長度。'],
-  L:['鐵芯疊厚','L','矽鋼片疊起來的軸向總厚度，即線圈在軸向要跨越的長度。'],
-  b:['齒寬','b','繞線那顆齒的寬度（切線方向）。線圈繞在齒外，所以齒寬加上疊厚決定了最內圈匝長。'],
-  ins:['絕緣厚','i','齒與線圈之間的絕緣層單邊厚度，如絕緣骨架、絕緣紙或粉體塗裝。每邊各加一次，所以內圈尺寸為 L+2i 與 b+2i。'],
-  t:['線圈堆疊厚','t','線圈從絕緣表面向外堆疊的總厚度（單邊）。轉角處線圈呈圓弧，其中心線轉彎半徑為 t/2，四個角合起來貢獻 π·t。'],
-  Tref:['參考溫度','','用來與實測比對的溫度，通常為量測時的室溫（冷態）。'],
-  Top:['工作溫度','','馬達穩態運轉時繞組的平均溫度。用於算熱態電阻與銅損。可參考絕緣等級：B 級 130 °C、F 級 155 °C、H 級 180 °C（熱點上限）。'],
-  IL:['線電流','I_L','流入每個端子的電流（RMS），即電流探棒夾在引出線上量到的值。Y 接時等於相電流；Δ 接時相電流 = I_L/√3。'],
-  RLL:['端子間電阻','R_LL, line-to-line','任兩個端子（如 U–V）之間量得的直流電阻，也就是三用電表或微歐計實際讀到的數字。\nY：串了兩相 → 2·R_ph\nΔ：一相與另兩相串聯並聯 → ⅔·R_ph'],
-  Rph:['相電阻','R_ph','單一相繞組本身的電阻。Δ 接或 Y 接無中性點引出時無法直接量到，需由 R_LL 換算。'],
-  J:['電流密度','J','導體每 mm² 承載的電流：J = 相電流 ÷ (a × nₛ × A)。經驗範圍（自然冷卻小馬達）：< 4 A/mm² 寬鬆；4–7 一般；> 7 需強制散熱或縮短工作時間。'],
-  Pcu:['銅損','P_Cu','電流流過繞組電阻產生的熱：3·I_ph²·R_ph。兩種接法都可寫成 1.5·I_L²·R_LL，所以只要量 R_LL 就能算。以工作溫度電阻計算。'],
-  alpha:['溫度係數','α, 234.5','銅的電阻隨溫度近似線性上升：R(T) = R₂₀·(1 + α(T−20))，α ≈ 0.00393 /°C。等價寫法：R₂/R₁ = (234.5+T₂)/(234.5+T₁)，234.5 °C 為銅的「推算零電阻溫度」（鋁為 225）。每升 10 °C 電阻約增 4%。'],
-  rise:['電阻法溫升','IEC 60034-1','用冷、熱態電阻比推算繞組平均溫度：\nT₂ = R₂/R₁ × (234.5+T₁) − 234.5\n溫升 ΔT = T₂ − 環境溫度。熱態電阻應在斷電後盡快量測，必要時外插回斷電瞬間。得到的是平均值，熱點通常再高 5–15 K。'],
+  L:['疊厚','L','矽鋼片疊起來的軸向總厚度。線圈繞在齒上時，長邊要跨越這個長度。'],
+  b:['齒寬','b','繞線那顆齒的寬度（切線方向）。'],
+  h:['可繞線高度','h','沿齒的方向（徑向）能排導線的高度：從軛部側絕緣面到極靴側絕緣面的距離，已扣掉兩端絕緣。決定每一層能排幾根線。'],
+  i:['絕緣厚','i','齒面到導線之間的絕緣單邊厚度，例如絕緣骨架壁厚、絕緣紙或粉體塗裝。四面各加一次，所以繞線的內圈是 (L+2i) × (b+2i)。'],
+  r0:['絕緣轉角半徑','r₀','絕緣外表面在四個角的圓角半徑，也就是第一層導線貼著轉彎的地方。\n粉體塗裝約等於 i；骨架依模具設計，常見 0.3～1 mm。設 0 等於直角轉彎。'],
+  tmax:['單邊可用厚度上限','t_max','線圈從絕緣面往外最多能堆多厚，通常是相鄰兩齒之間的槽寬一半，再扣掉安全間隙與繞線針嘴空間。超過時會標紅警告。設 0 表示不檢查。'],
+  d:['裸銅線徑','d','導體直徑，用來算銅截面積與電阻。'],
+  dout:['完成外徑','d_o','含漆膜的漆包線外徑，用來排線與算線圈厚度。請填線材規格書的最大外徑；IEC 60317 Grade 1/2 的漆膜增量依線徑不同，0.35 mm Grade 2 約 0.39～0.40 mm。'],
+  N:['每線圈匝數','N','單一線圈繞幾圈。並繞時多股一起算一匝。'],
+  ns:['並繞股數','nₛ','同一匝用幾根線一起繞。每匝佔 nₛ 個排線位置，電阻為單股的 1/nₛ。'],
+  pat:['排線方式','',
+    '整齊方格：每層導線正對上一層，層距 = 外徑。\n正交嵌入（orthocyclic）：下一層落在上一層兩線之間的凹槽，層距縮為 0.866 × 外徑，奇數層少排一根。精密排線機或手工整齊排線時接近此狀態。'],
+  g:['排線鬆散係數','g','實際繞線無法完美緊排時，把排線間距放大的倍數。\n1.00 = 理想緊排\n1.05～1.10 = 自動繞線機一般水準\n1.15 以上 = 亂繞、交叉多\n可用實物線圈厚度回推調整。'],
+  cpp:['每相線圈數','','一相繞組有幾個線圈。三相集中繞為槽數 ÷ 3。'],
+  a:['並聯路數','a','每相線圈分成幾條並聯支路，電阻與 a² 成反比。'],
+  lead:['引出線','','每條支路從繞組到端子或焊點的導線長度。'],
+  rho:['電阻率','ρ₂₀','20 °C 時的電阻率。IACS 100% 退火銅為 0.017241 Ω·mm²/m。'],
+  RLL:['端子間電阻','R_LL','任兩端子間量得的直流電阻。\nY：2·R_ph\nΔ：⅔·R_ph'],
+  mlt:['平均匝長','MLT','總線長 ÷ 匝數。本頁逐層算出每一匝的實際周長再平均，不必假設線圈厚度中心位置；外層匝數多時，MLT 會往外層偏。'],
 };
 const pop=$('pop'),popBody=$('popBody');let popBtn=null;
-function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+const esc=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function openPop(btn){
   const g=G[btn.dataset.k]; if(!g) return;
   if(popBtn===btn){closePop();return;}
   if(popBtn) popBtn.setAttribute('aria-expanded','false');
   const parts=g[2].split('\n');
-  popBody.innerHTML=`<h3>${esc(g[0])}${g[1]?`<em>${esc(g[1])}</em>`:''}</h3><p>${esc(parts[0])}</p>`+(parts.length>1?`<div class="eq">${esc(parts.slice(1).join('\n'))}</div>`:'');
+  popBody.innerHTML=`<h4>${esc(g[0])}${g[1]?`<em>${esc(g[1])}</em>`:''}</h4><p>${esc(parts[0])}</p>`+(parts.length>1?`<div class="eq">${esc(parts.slice(1).join('\n'))}</div>`:'');
   pop.hidden=false; popBtn=btn; btn.setAttribute('aria-expanded','true');
-  const r=btn.getBoundingClientRect(),pw=pop.offsetWidth,ph=pop.offsetHeight,vw=innerWidth,vh=innerHeight;
-  let x=Math.min(Math.max(16,r.left-20),vw-pw-16);
-  let y=r.bottom+8; if(y+ph>vh-12) y=Math.max(12,r.top-ph-8);
+  const r=btn.getBoundingClientRect(),pw=pop.offsetWidth,ph=pop.offsetHeight;
+  let x=Math.min(Math.max(16,r.left-20),innerWidth-pw-16), y=r.bottom+8;
+  if(y+ph>innerHeight-12) y=Math.max(12,r.top-ph-8);
   pop.style.left=x+'px'; pop.style.top=y+'px';
   pop.querySelector('.x').focus({preventScroll:true});
 }
@@ -364,207 +300,232 @@ document.addEventListener('click',e=>{if(popBtn&&!pop.contains(e.target))closePo
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 addEventListener('scroll',()=>{if(popBtn){pop.hidden=true;popBtn.setAttribute('aria-expanded','false');popBtn=null;}},{passive:true});
 
-/* ---------- inputs ---------- */
-let conn='Y', mltMode='geo';
-const awg=$('awg');
-for(let n=16;n<=44;n++){const d=0.127*Math.pow(92,(36-n)/39);const o=document.createElement('option');o.value=d.toFixed(4);o.textContent='AWG '+n+'（'+d.toFixed(3)+' mm）';awg.appendChild(o);}
-awg.addEventListener('change',()=>{if(awg.value){$('d').value=(+awg.value).toFixed(3);calc();}});
-$('d').addEventListener('input',()=>{awg.value='';});
-function seg(a,b,cb){[a,b].forEach((el,i)=>el.addEventListener('click',()=>{a.setAttribute('aria-pressed',i===0);b.setAttribute('aria-pressed',i===1);cb(i);calc();}));}
+/* ---------- state ---------- */
+let pat='sq', conn='Y';
+function seg(a,b,cb){[a,b].forEach((el,i)=>el.addEventListener('click',()=>{a.setAttribute('aria-pressed',i===0);b.setAttribute('aria-pressed',i===1);cb(i);run();}));}
+seg($('pSq'),$('pOr'),i=>pat=i?'or':'sq');
 seg($('cY'),$('cD'),i=>conn=i?'D':'Y');
-seg($('mltGeo'),$('mltDir'),i=>{mltMode=i?'dir':'geo';$('geoRow').hidden=!!i;$('dirRow').hidden=!i;
-  $('mltNote').textContent=i?'分佈繞或其他繞法：MLT ≈ 2 × 疊厚 + 2 × 端部長度，可由 3D 模型或實際線圈量測。':'MLT = 2(L+2i) + 2(b+2i) + π·t，取線圈厚度中心線的圓角矩形周長。';});
-
 const v=id=>parseFloat($(id).value);
 const kT=T=>(234.5+T)/254.5;
 const f=(x,dg=3)=>!isFinite(x)?'—':Math.abs(x)>=1000?x.toFixed(0):Math.abs(x)>=100?x.toFixed(1):Math.abs(x)>=10?x.toFixed(2):x.toFixed(dg);
 
-let S={};
-function calc(){
-  const d=v('d'),ns=Math.max(1,Math.round(v('ns')||1)),rho=v('rho'),N=v('N'),cpp=Math.max(1,Math.round(v('cpp')||1)),a=Math.max(1,Math.round(v('a')||1)),lead=v('lead')||0;
-  let mlt; const ins=v('ins')||0;
-  if(mltMode==='geo') mlt=2*(v('L')+2*ins)+2*(v('b')+2*ins)+Math.PI*v('t'); else mlt=v('mlt');
-  const A=Math.PI/4*d*d;
-  const lenPath=N*(cpp/a)*mlt/1000+lead/1000;
-  const R20=rho*lenPath/(A*ns)/a;
-  const Tref=v('Tref'),Top=v('Top'),I=v('I');
+/* ---------- core computation ---------- */
+function compute(){
+  const p={L:v('L'),b:v('b'),h:v('h'),i:Math.max(0,v('i')||0),r0:Math.max(0,v('r0')||0),tmax:Math.max(0,v('tmax')||0),
+    d:v('d'),dout:v('dout'),N:Math.max(1,Math.round(v('N')||1)),ns:Math.max(1,Math.round(v('ns')||1)),g:Math.max(1,v('g')||1),
+    cpp:Math.max(1,Math.round(v('cpp')||1)),a:Math.max(1,Math.round(v('a')||1)),lead:Math.max(0,v('lead')||0),rho:v('rho'),Tref:v('Tref'),Top:v('Top')};
+  const R={p,msgs:[]};
+  for(const k of ['L','b','h','d','dout','rho']) if(!(p[k]>0)){R.err='請確認 '+k+' 為正數。';return R;}
+  if(p.dout<p.d) R.msgs.push(['warn','完成外徑 d<sub>o</sub> 小於裸線徑 d，請確認輸入。']);
+  const Lp=p.L+2*p.i, bp=p.b+2*p.i;
+  const r0=Math.min(p.r0,Math.min(Lp,bp)/2);
+  if(r0<p.r0) R.msgs.push(['','轉角半徑大於齒部一半，已限制為 '+f(r0)+' mm。']);
+  const pa=p.dout*p.g;
+  const n0=Math.floor((p.h-p.dout)/pa+1e-9)+1;
+  if(n0<1){R.err='可繞線高度 h 小於導線外徑，一根都排不下。';return R;}
+  let mode=pat;
+  if(mode==='or'&&n0<2){mode='sq';R.msgs.push(['','每層只能排 1 根，正交嵌入無法成立，已改用整齊方格計算。']);}
+  const pr=(mode==='or'?Math.sqrt(3)/2:1)*pa;
+  const straight=2*(Lp-2*r0)+2*(bp-2*r0);
+  const total=p.N*p.ns; let left=total, k=0; const layers=[];
+  while(left>0&&k<500){
+    const odd=mode==='or'&&k%2===1;
+    const cap=odd?n0-1:n0, n=Math.min(cap,left);
+    const c=p.dout/2+k*pr;
+    const len=straight+2*Math.PI*(r0+c);
+    layers.push({k,n,cap,c,len,shift:odd?pa/2:0,start:total-left});
+    left-=n;k++;
+  }
+  if(left>0){R.err='超過 500 層，請檢查匝數、線徑與可繞線高度。';return R;}
+  const sum=layers.reduce((s,L)=>s+L.n*L.len,0);       // mm, all wire positions
+  const strand=sum/p.ns;                                  // mm per strand
+  const mlt=strand/p.N;
+  const last=layers[layers.length-1];
+  const t=last.c+p.dout/2;
+  const mltF=2*Lp+2*bp+Math.PI*t;
+  const A=Math.PI/4*p.d*p.d;
+  const Rcoil=p.rho*(strand/1000)/(A*p.ns);
+  const Rlead=p.rho*(p.lead/1000)/(A*p.ns);
+  const Rph20=(Rcoil*p.cpp/p.a+Rlead)/p.a;
   const kLL=conn==='Y'?2:2/3;
-  const Iph=conn==='Y'?I:I/Math.sqrt(3);
-  const J=(Iph/a)/(A*ns);
-  const Rop=R20*kT(Top), P=3*Iph*Iph*Rop;
-  const lenPhase=lenPath*a;
-  const mass=3*lenPhase*A*ns*8.89;
-  S={R20,kLL,Tref,Top};
-  $('oLLref').innerHTML=f(R20*kT(Tref)*kLL)+' <small>Ω @ '+Tref+' °C</small>';
-  $('oLLop').textContent=f(Rop*kLL)+' Ω';
-  $('oPh').textContent=f(R20*kT(Tref))+' Ω';
-  $('oMLT').textContent=f(mlt,1)+' mm';
-  $('oLen').textContent=f(lenPhase,2)+' m'+(ns>1?' × '+ns+' 股':'');
-  $('oA').textContent=A.toFixed(4)+' mm²';
-  $('oW').textContent=f(mass,1)+' g';
-  $('oPh20').textContent=f(R20)+' Ω';
-  $('oPhOp').textContent=f(Rop)+' Ω @ '+Top+' °C';
-  const chip=J<4?'<span class="chip ok">寬鬆</span>':J<7?'<span class="chip mid">一般</span>':'<span class="chip warn">偏高</span>';
-  $('oJ').innerHTML=f(J,2)+' A/mm²'+chip;
-  $('oP').textContent=f(P,2)+' W';
-  $('cppWarn').hidden=cpp%a===0;
-  $('connNote').innerHTML=conn==='Y'
-    ?'Y 接：相電流 = 線電流 '+f(I,2)+' A；R<sub>LL</sub> = 2 R<sub>ph</sub>。'
-    :'Δ 接：相電流 = I<sub>L</sub>/√3 = '+f(Iph,3)+' A；R<sub>LL</sub> = ⅔ R<sub>ph</sub>。';
-  // reverse
-  const Rc=v('Rc'),Tc=v('Tc'),Rh=v('Rh'),Ta=v('Ta');
-  const Th=Rh/Rc*(234.5+Tc)-234.5, ratio=Rc/(R20*kLL*kT(Tc));
-  $('rev').innerHTML=`<span>熱態繞組平均溫度</span><span>${f(Th,1)} °C</span><span>溫升 ΔT</span><span>${f(Th-Ta,1)} K</span><span>冷態實測 ÷ 本頁估算</span><span>${isFinite(ratio)?(ratio*100).toFixed(1)+' %':'—'}</span>`;
-  drawWire(d,ns); drawPath(cpp,a,N); drawTooth(); drawConn(); drawTable(); drawChart();
+  const fill=total*A/(p.h*t);
+  Object.assign(R,{Lp,bp,r0,pa,pr,n0,mode,straight,layers,sum,strand,mlt,t,mltF,A,Rcoil,Rph20,kLL,fill,
+    phaseLen:(strand*p.cpp+p.lead*p.a)/1000});
+  if(p.cpp%p.a!==0) R.msgs.push(['warn','每相線圈數必須能被並聯路數整除。']);
+  if(p.tmax>0&&t>p.tmax+1e-9) R.msgs.push(['warn',`線圈厚度 ${f(t)} mm 超過可用上限 ${f(p.tmax)} mm，相鄰線圈會干涉。可減少匝數、改細線或增加可繞線高度。`]);
+  else if(p.tmax>0) R.msgs.push(['ok',`線圈厚度 ${f(t)} mm，在上限 ${f(p.tmax)} mm 內，餘裕 ${f(p.tmax-t)} mm。`]);
+  if(last.n<last.cap) R.msgs.push(['',`最外層只排了 ${last.n}／${last.cap} 根，屬未滿層。`]);
+  if(p.ns>1&&n0%p.ns!==0) R.msgs.push(['','每層根數不是股數的整數倍，部分匝的兩股會跨層，線長仍依實際位置計算。']);
+  return R;
 }
 
-/* ---------- figures ---------- */
-function drawWire(d,ns){
-  const n=Math.min(ns,7), s=$('figWire');
-  let g='';
-  const R=n===1?34:n<=3?22:n<=4?18:15;
-  const pts=[];
-  const C=[54,62];
-  if(n===1) pts.push(C);
-  else { const rr=n===2?R+1:n<=4?R*1.25:R*1.6; if(n===7){pts.push(C);for(let i=0;i<6;i++)pts.push([C[0]+rr*Math.cos(i*Math.PI/3),C[1]+rr*Math.sin(i*Math.PI/3)]);} else for(let i=0;i<n;i++)pts.push([C[0]+rr*Math.cos(i*2*Math.PI/n-Math.PI/2),C[1]+rr*Math.sin(i*2*Math.PI/n-Math.PI/2)]); }
-  pts.forEach(p=>{g+=`<circle cx="${p[0]}" cy="${p[1]}" r="${R}" fill="var(--enamel)"/><circle cx="${p[0]}" cy="${p[1]}" r="${R*0.86}" fill="var(--copper)"/>`;});
-  const p=pts[0], rc=R*0.86;
-  g+=`<line x1="${p[0]-rc}" y1="${p[1]}" x2="${p[0]+rc}" y2="${p[1]}" stroke="var(--panel)" stroke-width="1.2"/><path d="M${p[0]-rc+5} ${p[1]-3}L${p[0]-rc} ${p[1]}L${p[0]-rc+5} ${p[1]+3}M${p[0]+rc-5} ${p[1]-3}L${p[0]+rc} ${p[1]}L${p[0]+rc-5} ${p[1]+3}" stroke="var(--panel)" fill="none" stroke-width="1.2"/>`;
-  g+=`<text x="112" y="48" style="fill:var(--ink);font-size:12px">d = ${f(d)} mm</text>`;
-  g+=`<text x="112" y="68" style="fill:var(--ink);font-size:12px">nₛ = ${ns} 股</text>`;
-  g+=`<rect x="112" y="84" width="9" height="9" fill="var(--copper)"/><text x="125" y="92">銅</text><rect x="146" y="84" width="9" height="9" fill="var(--enamel)"/><text x="159" y="92">漆膜</text>`;
-  if(ns>7) g+=`<text x="${C[0]}" y="124" text-anchor="middle">（僅畫 7 股）</text>`;
-  s.innerHTML=g;
+/* ---------- drawing helpers ---------- */
+const rrPath=(cx,cy,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h/2));const x=cx-w/2,y=cy-h/2;
+  return r<=0?`M${x} ${y}h${w}v${h}h${-w}Z`:`M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w-2*r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h-2*r)}a${r} ${r} 0 0 1 ${r} ${-r}Z`;};
+const n2=x=>+x.toFixed(2);
+function dimH(x1,x2,y,label,ext1,ext2){ // horizontal dimension
+  let s=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(x1)}" y1="${n2(ext1)}" x2="${n2(x1)}" y2="${n2(y+5)}" stroke-opacity=".45"/><line x1="${n2(x2)}" y1="${n2(ext2)}" x2="${n2(x2)}" y2="${n2(y+5)}" stroke-opacity=".45"/>`;
+  s+=`<line x1="${n2(x1)}" y1="${n2(y)}" x2="${n2(x2)}" y2="${n2(y)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
+  const w=Math.abs(x2-x1);
+  s+=w>label.length*7+6?`<text class="dimt" x="${n2((x1+x2)/2)}" y="${n2(y+15)}" text-anchor="middle">${label}</text>`:`<text class="dimt" x="${n2(Math.max(x1,x2)+6)}" y="${n2(y+4)}">${label}</text>`;
+  return s;
 }
-function drawPath(cpp,a,N){
-  const s=$('figPath'); let g='';
-  const ok=cpp%a===0, per=ok?cpp/a:Math.ceil(cpp/a), rows=Math.min(a,4), cols=Math.min(per,6);
-  const x0=26,x1=174,top=22,bot=112, H=bot-top;
-  g+=`<line x1="${x0}" y1="${top}" x2="${x0}" y2="${bot}" stroke="var(--muted)" stroke-width="1.5"/><line x1="${x1}" y1="${top}" x2="${x1}" y2="${bot}" stroke="var(--muted)" stroke-width="1.5"/>`;
-  g+=`<text x="${x0}" y="${top-8}" text-anchor="middle" style="fill:var(--ink)">相頭</text><text x="${x1}" y="${top-8}" text-anchor="middle" style="fill:var(--ink)">相尾</text>`;
-  for(let r=0;r<rows;r++){
-    const y=rows===1?(top+bot)/2:top+8+r*(H-16)/(rows-1);
-    const span=x1-x0-20, w=span/cols;
-    g+=`<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="var(--muted)"/>`;
-    for(let c=0;c<cols;c++){
-      const cx=x0+10+w*c+w/2, cw=Math.min(w-6,22);
-      let path=`M${cx-cw/2} ${y}`; const k=3, seg=cw/k;
-      for(let j=0;j<k;j++) path+=` a${seg/2} ${seg/2} 0 0 1 ${seg} 0`;
-      g+=`<rect x="${cx-cw/2-1}" y="${y-8}" width="${cw+2}" height="10" fill="var(--sunk)"/><path d="${path}" fill="none" stroke="var(--copper)" stroke-width="2"/>`;
+function dimV(x,y1,y2,label,ext){
+  let s=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(ext)}" y1="${n2(y1)}" x2="${n2(x-5)}" y2="${n2(y1)}" stroke-opacity=".45"/><line x1="${n2(ext)}" y1="${n2(y2)}" x2="${n2(x-5)}" y2="${n2(y2)}" stroke-opacity=".45"/>`;
+  s+=`<line x1="${n2(x)}" y1="${n2(y1)}" x2="${n2(x)}" y2="${n2(y2)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
+  s+=`<text class="dimt" x="${n2(x-6)}" y="${n2((y1+y2)/2+4)}" text-anchor="end">${label}</text>`;
+  return s;
+}
+const DEFS=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="var(--ink)" stroke-width="1.4"/></marker></defs>`;
+
+/* 剖面 A–A：齒在中間，兩側線圈 */
+function drawA(R){
+  const {p,layers,t,pa}=R, svg=$('svgA');
+  const W=560;
+  const tw=Math.max(t,p.tmax||0)+p.dout*.4;
+  const xHalf=p.b/2+p.i+tw;
+  const yk=Math.max(p.h*.12,p.dout*2), sh=yk;
+  const Ht=yk+2*p.i+p.h+sh;
+  const s=Math.min((W-150)/(2*xHalf),330/Ht);
+  const cx=W/2, top=24;
+  const X=x=>cx+x*s, Y=y=>top+y*s;
+  const H=Math.ceil(top+Ht*s+64);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  let g=DEFS;
+  const yW0=yk+p.i, yW1=yk+p.i+p.h;
+  // yoke, tooth, shoe
+  g+=`<rect x="${n2(X(-xHalf-p.dout))}" y="${n2(Y(0))}" width="${n2(2*(xHalf+p.dout)*s)}" height="${n2(yk*s)}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  g+=`<rect x="${n2(X(-p.b/2))}" y="${n2(Y(yk))}" width="${n2(p.b*s)}" height="${n2((2*p.i+p.h)*s)}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  const shH=p.b/2+p.i+tw*.85;
+  g+=`<path d="M${n2(X(-p.b/2))} ${n2(Y(yW1+p.i))}H${n2(X(-shH))}V${n2(Y(Ht))}H${n2(X(shH))}V${n2(Y(yW1+p.i))}H${n2(X(p.b/2))}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  g+=`<text x="${n2(X(-xHalf-p.dout)+6)}" y="${n2(Y(yk/2)+4)}">軛部</text><text x="${n2(X(shH)+6)}" y="${n2(Y(Ht-sh/2)+4)}">極靴</text>`;
+  // insulation (U-shaped bobbin both sides)
+  if(p.i>0){
+    for(const sg of [1,-1]){
+      const xa=sg*p.b/2, xb=sg*(p.b/2+p.i), xo=sg*(p.b/2+p.i+tw);
+      const pts=[[xa,yk],[xo,yk],[xo,yk+p.i],[xb,yk+p.i],[xb,yW1],[xo,yW1],[xo,yW1+p.i],[xa,yW1+p.i]];
+      g+=`<path d="M${pts.map(q=>n2(X(q[0]))+' '+n2(Y(q[1]))).join('L')}Z" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6"/>`;
     }
-    if(per>cols) g+=`<text x="${(x0+x1)/2}" y="${y+16}" text-anchor="middle">…共 ${per} 個</text>`;
   }
-  if(a>rows) g+=`<text x="100" y="${bot+14}" text-anchor="middle">…共 ${a} 路</text>`;
-  s.innerHTML=g;
-  $('capPath').textContent=`${a} 路並聯，每路 ${ok?per:'?'} 個線圈串聯，每個 ${N} 匝。`;
-}
-function drawTooth(){
-  const s=$('figTooth'), geo=mltMode==='geo'; let g='';
-  // fixed proportional drawing (schematic)
-  const cx=100,cy=72, L=70,b=22, i=5, t=20;
-  const rr=(x,w,h,r,fill,stroke,extra='')=>`<rect x="${cx-w/2}" y="${cy-h/2}" width="${w}" height="${h}" rx="${r}" fill="${fill}" ${stroke?`stroke="${stroke}"`:''} ${extra}/>`;
-  g+=rr(0,b+2*i+2*t,L+2*i+2*t,t,'var(--copper)');
-  g+=`<rect x="${cx-(b+2*i+2*t)/2}" y="${cy-(L+2*i+2*t)/2}" width="${b+2*i+2*t}" height="${L+2*i+2*t}" rx="${t}" fill="url(#hatch)" opacity=".35"/>`;
-  g+=rr(0,b+2*i,L+2*i,1,'var(--enamel)');
-  g+=rr(0,b,L,0,'var(--steel-soft)','var(--steel)');
-  g+=rr(0,b+2*i+t,L+2*i+t,t/2,'none','var(--panel)','stroke-width="1.6" stroke-dasharray="4 3"');
-  g=`<defs><pattern id="hatch" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="4" stroke="var(--panel)" stroke-width="1"/></pattern></defs>`+g;
+  // tmax limit
+  if(p.tmax>0){
+    for(const sg of [1,-1]){const xl=X(sg*(p.b/2+p.i+p.tmax));
+      g+=`<line x1="${n2(xl)}" y1="${n2(Y(yk)-6)}" x2="${n2(xl)}" y2="${n2(Y(yW1+p.i)+6)}" stroke="var(--warn)" stroke-dasharray="5 4" stroke-width="1.2"/>`;}
+    g+=`<text x="${n2(X(p.b/2+p.i+p.tmax)+4)}" y="${n2(Y(yk)-8)}" style="fill:var(--warn)">上限</text>`;
+  }
+  // wires
+  const ro=p.dout/2*s, rc=p.d/2*s;
+  const total=layers.reduce((a,L)=>a+L.n,0)*2;
+  const simple=ro<2.2||total>5000;
+  for(const L of layers){
+    const col=L.k%2?'var(--copper-2)':'var(--copper)';
+    let w='';
+    for(let j=0;j<L.n;j++){
+      const yy=Y(yW0+p.dout/2+L.shift+j*pa);
+      for(const sg of [1,-1]){
+        const xx=X(sg*(p.b/2+p.i+L.c));
+        w+=simple?`<circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(Math.max(ro,.6))}" fill="${col}"/>`
+                 :`<circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(ro)}" fill="var(--enamel)"/><circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(rc)}" fill="${col}"/>`;
+      }
+    }
+    g+=`<g class="lay" data-k="${L.k}">${w}</g>`;
+  }
+  // mean path line (right side)
+  const cm=(R.mlt-R.straight)/(2*Math.PI)-R.r0;
+  if(cm>0){const xm=X(p.b/2+p.i+cm);g+=`<line x1="${n2(xm)}" y1="${n2(Y(yW0)-4)}" x2="${n2(xm)}" y2="${n2(Y(yW1)+4)}" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.1"/>`;}
   // dims
-  const xl=cx+b/2+i+t+8;
-  g+=`<line x1="${xl}" y1="${cy-L/2}" x2="${xl}" y2="${cy+L/2}" stroke="var(--ink)"/><line x1="${xl-3}" y1="${cy-L/2}" x2="${xl+3}" y2="${cy-L/2}" stroke="var(--ink)"/><line x1="${xl-3}" y1="${cy+L/2}" x2="${xl+3}" y2="${cy+L/2}" stroke="var(--ink)"/><text x="${xl+5}" y="${cy+3}" style="fill:var(--ink)">L</text>`;
-  g+=`<text x="${cx}" y="${cy+3}" text-anchor="middle" style="fill:var(--steel);font-weight:600">b</text>`;
-  const xt=cx-b/2-i-t/2, xi=cx-b/2-i/2;
-  g+=`<line x1="30" y1="${cy-18}" x2="${xt}" y2="${cy-18}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${xt}" cy="${cy-18}" r="1.8" fill="var(--ink)"/><text x="26" y="${cy-15}" text-anchor="end" style="fill:var(--ink);font-size:11px">t</text>`;
-  g+=`<line x1="30" y1="${cy+18}" x2="${xi}" y2="${cy+18}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${xi}" cy="${cy+18}" r="1.8" fill="var(--ink)"/><text x="26" y="${cy+21}" text-anchor="end" style="fill:var(--ink);font-size:11px">i</text>`;
-  g+=`<text x="${cx}" y="${cy-L/2-i-t-5}" text-anchor="middle" style="fill:var(--ink)">MLT（虛線）</text>`;
-  s.innerHTML=g; s.style.opacity=geo?1:.5;
+  const yd=Y(Ht)+20;
+  g+=dimH(X(-p.b/2),X(p.b/2),yd,'b',Y(Ht),Y(Ht));
+  g+=dimH(X(p.b/2+p.i),X(p.b/2+p.i+t),yd+26,'t='+f(t),Y(yW1),Y(yW1));
+  g+=dimV(X(-xHalf)-14,Y(yW0),Y(yW1),'h',X(-p.b/2-p.i-t));
+  svg.innerHTML=g;
 }
-function drawConn(){
-  const s=$('figConn'); let g='';
-  const U=[100,18],V=[30,120],W=[170,120];
-  const lab=(p,t,dx,dy)=>`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4"/><text x="${p[0]+dx}" y="${p[1]+dy}" style="fill:var(--ink);font-size:11px;font-weight:600">${t}</text>`;
-  const hi=conn==='Y'?[0,1]:[0];
-  if(conn==='Y'){
-    const c=[100,80];[U,V,W].forEach((p,i)=>g+=coil(c,p,hi.includes(i)?'var(--copper)':'var(--muted)',hi.includes(i)?2:1.2));
-    g+=`<circle cx="${c[0]}" cy="${c[1]}" r="3" fill="var(--ink)"/><text x="${c[0]+7}" y="${c[1]-7}">N</text>`;
-  }else{
-    g+=coil(U,V,'var(--copper)',2)+coil(V,W,'var(--copper)',1.6)+coil(W,U,'var(--copper)',1.6);
+
+/* 頂視：每層匝路徑為等距圓角矩形 */
+function drawB(R){
+  const {p,layers,t,Lp,bp,r0}=R, svg=$('svgB');
+  const W=380, Xh=bp/2+t, Yh=Lp/2+t;
+  const s=Math.min((W-110)/(2*Xh),330/(2*Yh));
+  const cx=W/2+16, top=20, cy=top+Yh*s;
+  const H=Math.ceil(cy+Yh*s+52);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  let g=DEFS;
+  g+=`<path d="${rrPath(cx,cy,(bp+2*t)*s,(Lp+2*t)*s,(r0+t)*s)}" fill="var(--copper-soft)" stroke="var(--copper)" stroke-width=".8"/>`;
+  g+=`<path d="${rrPath(cx,cy,bp*s,Lp*s,r0*s)}" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6"/>`;
+  g+=`<rect x="${n2(cx-p.b/2*s)}" y="${n2(cy-p.L/2*s)}" width="${n2(p.b*s)}" height="${n2(p.L*s)}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  for(const L of layers){
+    const col=L.k%2?'var(--copper-2)':'var(--copper)';
+    g+=`<path class="lay" data-k="${L.k}" d="${rrPath(cx,cy,(bp+2*L.c)*s,(Lp+2*L.c)*s,(r0+L.c)*s)}" fill="none" stroke="${col}" stroke-width="${layers.length>40?.6:1.1}"/>`;
   }
-  g+=lab(U,'U',-18,4)+lab(V,'V',-6,-10)+lab(W,'W',-4,-10);
-  // meter
-  g+=`<path d="M${U[0]} ${U[1]-5} C ${U[0]} 2, 190 2, 190 40" fill="none" stroke="var(--steel)" stroke-dasharray="3 3"/><path d="M${V[0]-5} ${V[1]} C 6 ${V[1]}, 6 136, 100 136 L 190 136 L 190 82" fill="none" stroke="var(--steel)" stroke-dasharray="3 3"/>`;
-  g+=`<rect x="176" y="40" width="22" height="42" rx="3" fill="var(--steel-soft)" stroke="var(--steel)"/><text x="187" y="65" text-anchor="middle" style="fill:var(--steel);font-size:12px;font-weight:600">Ω</text>`;
-  s.innerHTML=g;
-}
-function coil(a,b,col,w){
-  const dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L;
-  let pts=[a];const s0=.3,s1=.7,k=8;
-  for(let i=0;i<=k;i++){const t=s0+(s1-s0)*i/k,o=(i===0||i===k)?0:(i%2?5:-5);pts.push([a[0]+dx*t+nx*o,a[1]+dy*t+ny*o]);}
-  pts.push(b);
-  return `<polyline points="${pts.map(p=>p.map(n=>n.toFixed(1)).join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="${w}" stroke-linejoin="round"/>`;
+  const cm=(R.mlt-R.straight)/(2*Math.PI)-r0;
+  if(cm>0) g+=`<path d="${rrPath(cx,cy,(bp+2*cm)*s,(Lp+2*cm)*s,(r0+cm)*s)}" fill="none" stroke="var(--ink)" stroke-dasharray="5 4" stroke-width="1.3"/>`;
+  g+=`<text x="${n2(cx)}" y="${n2(cy+4)}" text-anchor="middle" style="fill:var(--steel);font-weight:600">齒</text>`;
+  g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L',cx-p.b/2*s);
+  g+=dimH(cx-p.b/2*s,cx+p.b/2*s,cy+Yh*s+18,'b',cy+p.L/2*s,cy+p.L/2*s);
+  svg.innerHTML=g;
 }
 
-/* ---------- interactive chart ---------- */
-const CH={W:560,H:280,l:58,r:16,t:16,b:34,T0:-20,T1:200};
-let probeT=null, pinned=false;
-const chart=$('chart');
-function sc(){const {W,H,l,r,t,b,T0,T1}=CH;const y0=S.R20*S.kLL*kT(T0),y1=S.R20*S.kLL*kT(T1);const lo=y0*0.96,hi=y1*1.02;
-  return {X:T=>l+(T-T0)/(T1-T0)*(W-l-r),Xi:x=>T0+(x-l)/(W-l-r)*(T1-T0),Y:R=>t+(hi-R)/(hi-lo)*(H-t-b),lo,hi};}
-function drawChart(){
-  if(!isFinite(S.R20)||S.R20<=0){chart.innerHTML='';return;}
-  const {W,H,l,r,t,b,T0,T1}=CH, {X,Y,lo,hi}=sc(), RL=T=>S.R20*S.kLL*kT(T);
-  let g='';
-  [[130,'B'],[155,'F'],[180,'H']].forEach(([T,c])=>{g+=`<line x1="${X(T)}" x2="${X(T)}" y1="${t}" y2="${H-b}" stroke="var(--warn)" stroke-opacity=".35" stroke-dasharray="2 4"/><text x="${X(T)+3}" y="${t+10}" style="fill:var(--warn);opacity:.7">${c} 級</text>`;});
-  for(let T=T0;T<=T1;T+=20){g+=`<line x1="${X(T)}" x2="${X(T)}" y1="${t}" y2="${H-b}" stroke="var(--line)"/><text x="${X(T)}" y="${H-b+16}" text-anchor="middle">${T}</text>`;}
-  g+=`<text x="${W-r}" y="${H-4}" text-anchor="end">°C</text>`;
-  for(let i=0;i<=5;i++){const R=lo+(hi-lo)*i/5;g+=`<line x1="${l}" x2="${W-r}" y1="${Y(R)}" y2="${Y(R)}" stroke="var(--line)"/><text x="${l-8}" y="${Y(R)+3}" text-anchor="end">${f(R,2)}</text>`;}
-  g+=`<text x="12" y="${t+4}" transform="rotate(-90 12 ${t+4})" text-anchor="end">R_LL (Ω)</text>`;
-  g+=`<polygon points="${X(T0)},${Y(RL(T0))} ${X(T1)},${Y(RL(T1))} ${X(T1)},${H-b} ${X(T0)},${H-b}" fill="var(--copper-soft)" opacity=".8"/>`;
-  g+=`<line x1="${X(T0)}" y1="${Y(RL(T0))}" x2="${X(T1)}" y2="${Y(RL(T1))}" stroke="var(--copper)" stroke-width="2.5"/>`;
-  [[S.Tref,'參考','var(--steel)'],[S.Top,'工作','var(--copper)']].forEach(([T,lab,c])=>{if(!(T>=T0&&T<=T1))return;
-    const up=lab==='工作', tx=X(T)+(up?-10:10), ty=Y(RL(T))+(up?-12:18);
-    g+=`<circle cx="${X(T)}" cy="${Y(RL(T))}" r="6" fill="${c}" stroke="var(--panel)" stroke-width="2.5"/><text x="${tx}" y="${ty}" text-anchor="${up?'end':'start'}" style="fill:${c};font-size:11px;font-weight:600;paint-order:stroke;stroke:var(--panel);stroke-width:3px">${lab} ${T} °C</text>`;});
-  g+=`<g id="cross"></g><rect id="hit" x="${l}" y="${t}" width="${W-l-r}" height="${H-t-b}" fill="transparent"/>`;
-  chart.innerHTML=g;
-  if(probeT===null) probeT=v('qT');
-  updProbe();
+/* ---------- tables ---------- */
+function renderTables(R){
+  const {p}=R, RLL=R.Rph20*R.kLL;
+  $('kRLL').innerHTML=f(RLL*kT(p.Tref))+' <small>Ω @ '+p.Tref+' °C</small>';
+  $('kRLLop').innerHTML=f(RLL*kT(p.Top))+' <small>Ω @ '+p.Top+' °C</small>';
+  $('kMLT').innerHTML=f(R.mlt,2)+' <small>mm</small>';
+  $('kLen').innerHTML=f(R.strand/1000,3)+' <small>m'+(p.ns>1?' × '+p.ns+' 股':'')+'</small>';
+  const diff=(R.mltF/R.mlt-1)*100;
+  const fillChip=R.fill<.5?'<span class="chip ok">寬鬆</span>':R.fill<.7?'<span class="chip mid">一般</span>':'<span class="chip warn">偏高</span>';
+  $('detail').innerHTML=`
+    <tr class="grp"><td colspan="2">排線結果</td></tr>
+    <tr><td>層數</td><td>${R.layers.length} 層</td></tr>
+    <tr><td>每層可排根數</td><td>${R.mode==='or'?R.n0+'／'+(R.n0-1)+'（交替）':R.n0}</td></tr>
+    <tr><td>線圈厚度 t（單邊）</td><td>${f(R.t)} mm</td></tr>
+    <tr><td>繞線窗口佔積率</td><td>${(R.fill*100).toFixed(1)} %${fillChip}</td></tr>
+    <tr class="grp"><td colspan="2">匝長</td></tr>
+    <tr><td>MLT（逐層排線）</td><td>${f(R.mlt,2)} mm</td></tr>
+    <tr><td>MLT（簡化公式，直角）</td><td>${f(R.mltF,2)} mm</td></tr>
+    <tr><td>簡化公式偏差</td><td>${(diff>=0?'+':'')+diff.toFixed(1)} %</td></tr>
+    <tr><td>每相線長</td><td>${f(R.phaseLen,2)} m</td></tr>
+    <tr class="grp"><td colspan="2">電阻 @ 20 °C</td></tr>
+    <tr><td>單一線圈 R<sub>coil</sub></td><td>${f(R.Rcoil)} Ω</td></tr>
+    <tr><td>每相 R<sub>ph</sub></td><td>${f(R.Rph20)} Ω</td></tr>
+    <tr><td>端子間 R<sub>LL</sub>（${conn==='Y'?'Y':'Δ'}）</td><td>${f(R.Rph20*R.kLL)} Ω</td></tr>`;
+  $('msgs').innerHTML=R.msgs.map(m=>`<li class="${m[0]}">${m[1]}</li>`).join('');
+  let h='<thead><tr><th>層</th><th>根數</th><th>c (mm)</th><th>每匝長 (mm)</th><th>本層線長 (mm)</th><th>累計匝</th></tr></thead><tbody>';
+  let cum=0;
+  for(const L of R.layers){cum+=L.n;
+    h+=`<tr data-k="${L.k}"><td>${L.k+1}</td><td>${L.n}${L.n<L.cap?'／'+L.cap:''}</td><td>${L.c.toFixed(3)}</td><td>${L.len.toFixed(2)}</td><td>${(L.n*L.len).toFixed(1)}</td><td>${(cum/p.ns).toFixed(p.ns>1?1:0)}</td></tr>`;}
+  h+=`</tbody><tfoot><tr><td>合計</td><td>${p.N*p.ns}</td><td></td><td>平均 ${R.mlt.toFixed(2)}</td><td>${R.sum.toFixed(1)}</td><td>${p.N}</td></tr></tfoot>`;
+  $('lt').innerHTML=h;
+  $('lt').querySelectorAll('tbody tr').forEach(tr=>{
+    const on=()=>focusLayer(+tr.dataset.k), off=()=>focusLayer(null);
+    tr.addEventListener('mouseenter',on);tr.addEventListener('mouseleave',off);
+    tr.addEventListener('click',()=>{const k=+tr.dataset.k;focusLayer(pinned===k?null:k,true);});
+  });
 }
-function updProbe(){
-  if(!isFinite(S.R20)) return;
-  const {X,Y}=sc(), T=Math.max(CH.T0,Math.min(CH.T1,probeT)), RLL=S.R20*S.kLL*kT(T), Rph=S.R20*kT(T), {H,b,t,W,r}=CH;
-  const x=X(T),y=Y(RLL), right=x>W-150;
-  const lbl=`${T.toFixed(0)} °C · ${f(RLL)} Ω`, bw=lbl.length*6.4+16;
-  // 曲線往右上升：右下方與左上方沒有標記點，靠右時改放左上
-  const bx=right?x-bw-12:x+12, by=right?Math.max(t+2,y-36):Math.min(H-b-26,y+14);
-  const cr=$('cross'); if(!cr) return;
-  cr.innerHTML=`<line x1="${x}" x2="${x}" y1="${t}" y2="${H-b}" stroke="var(--ink)" stroke-opacity=".5"/><line x1="${CH.l}" x2="${x}" y1="${y}" y2="${y}" stroke="var(--ink)" stroke-opacity=".3" stroke-dasharray="3 3"/>
-  <circle cx="${x}" cy="${y}" r="6" fill="var(--panel)" stroke="var(--ink)" stroke-width="2"/>
-  <rect x="${bx}" y="${by}" width="${bw}" height="22" rx="4" fill="var(--ink)"/>
-  <text x="${bx+8}" y="${by+15}" style="fill:var(--bg);font-size:11px">${lbl}</text>`;
-  $('pR').textContent=f(RLL)+' Ω';
-  $('pState').textContent=(pinned?'已固定':'游標讀值')+' · '+T.toFixed(0)+' °C';
-  const r20=kT(T), rRef=kT(T)/kT(S.Tref);
-  $('pOut').innerHTML=`<span>R<sub>LL</sub></span><span>${f(RLL)} Ω</span><span>R<sub>ph</sub></span><span>${f(Rph)} Ω</span><span>相對 20 °C</span><span>${(r20*100-100>=0?'+':'')+(r20*100-100).toFixed(1)} %</span><span>相對參考 ${S.Tref} °C</span><span>${(rRef*100-100>=0?'+':'')+(rRef*100-100).toFixed(1)} %</span>`;
-  if(document.activeElement!==$('qT')) $('qT').value=T.toFixed(0);
-  document.querySelectorAll('#tbl tr[data-t]').forEach(tr=>tr.classList.toggle('on',+tr.dataset.t===Math.round(T)));
-}
-function ptT(e){const p=chart.createSVGPoint();p.x=e.clientX;p.y=e.clientY;const q=p.matrixTransform(chart.getScreenCTM().inverse());return Math.round(sc().Xi(q.x));}
-chart.addEventListener('pointermove',e=>{if(pinned)return;probeT=ptT(e);updProbe();});
-chart.addEventListener('pointerdown',e=>{probeT=ptT(e);pinned=true;updProbe();});
-chart.addEventListener('keydown',e=>{const s=e.shiftKey?10:1;if(e.key==='ArrowRight'){probeT=Math.min(CH.T1,probeT+s);pinned=true;}else if(e.key==='ArrowLeft'){probeT=Math.max(CH.T0,probeT-s);pinned=true;}else return;e.preventDefault();updProbe();});
-$('qT').addEventListener('input',()=>{const T=v('qT');if(isFinite(T)){probeT=T;pinned=true;updProbe();}});
-$('unpin').addEventListener('click',()=>{pinned=false;updProbe();});
-function drawTable(){
-  let h='<tr><th>溫度 °C</th><th>R_LL Ω</th><th>R_ph Ω</th><th>對 20 °C</th></tr>';
-  for(let T=CH.T0;T<=CH.T1;T+=20){const k=kT(T);h+=`<tr data-t="${T}"><td>${T}</td><td>${f(S.R20*S.kLL*k)}</td><td>${f(S.R20*k)}</td><td>${(k*100-100>=0?'+':'')+(k*100-100).toFixed(1)}%</td></tr>`;}
-  $('tbl').innerHTML=h;
-  $('tbl').querySelectorAll('tr[data-t]').forEach(tr=>tr.addEventListener('click',()=>{probeT=+tr.dataset.t;pinned=true;updProbe();}));
+let pinned=null;
+function focusLayer(k,pin){
+  if(pin) pinned=k; else if(k===null&&pinned!==null) k=pinned;
+  for(const id of ['cadA','cadB']){
+    const el=$(id); el.classList.toggle('focus',k!==null);
+    el.querySelectorAll('.lay').forEach(x=>x.classList.toggle('on',+x.dataset.k===k));
+  }
+  $('lt').querySelectorAll('tbody tr').forEach(tr=>tr.classList.toggle('on',+tr.dataset.k===k));
 }
 
-document.querySelectorAll('.steps input').forEach(el=>el.addEventListener('input',calc));
-calc();
+function run(){
+  const R=compute();
+  if(R.err){
+    $('msgs').innerHTML=`<li class="warn">${R.err}</li>`;
+    ['kRLL','kRLLop','kMLT','kLen'].forEach(id=>$(id).textContent='—');
+    $('detail').innerHTML='';$('lt').innerHTML='';$('svgA').innerHTML='';$('svgB').innerHTML='';
+    return;
+  }
+  pinned=null;
+  drawA(R);drawB(R);renderTables(R);
+}
+document.querySelectorAll('.inputs input').forEach(el=>el.addEventListener('input',run));
+run();
 })();
 </script>
-
 </body>
 </html>
