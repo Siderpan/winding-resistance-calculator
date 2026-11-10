@@ -182,10 +182,22 @@ h1.title .brand{flex:none;width:40px;height:40px}
 .btn.pri{background:var(--copper);color:var(--on-accent);border-color:var(--copper);font-weight:500}
 .btn.danger{border-color:var(--warn);color:var(--warn)}
 .prow .btn:not(.pri){flex:0 0 auto}
-.prow:last-of-type .btn{flex:1}
+.prow.two .btn{flex:1}
 .pmsg{margin:8px 0 0;font-size:.8rem;color:var(--muted);min-height:1.2em}
 .pnote{margin:4px 0 0;font-size:.74rem;color:var(--muted)}
 .pmsg.ok{color:var(--ok)} .pmsg.warn{color:var(--warn)}
+.share{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--sunk);display:flex;flex-direction:column;gap:8px}
+.share .shh{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:.9rem}
+.share .x{border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:2px 4px}
+.share input[type=password]{font-family:var(--f-body)}
+.share textarea{width:100%;font-family:var(--f-mono);font-size:.74rem;padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);resize:vertical;word-break:break-all}
+.shr{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem}
+.shr label{display:flex;gap:5px;align-items:center;cursor:pointer;white-space:nowrap}
+.shr input{width:auto;margin:0;accent-color:var(--copper)}
+.shnote{margin:0;font-size:.76rem;color:var(--muted)}
+.qr{background:#fff;border-radius:6px;padding:8px;margin:0 auto 8px;line-height:0;width:216px}
+#shRes{display:flex;flex-direction:column;gap:8px}
+.qr svg{width:200px;height:200px}
 /* motor tabs */
 .mtabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
 .mtabs button{font:inherit;font-size:.98rem;font-weight:500;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 18px 9px;cursor:pointer;margin-bottom:-1px}
@@ -243,7 +255,28 @@ input,select{font-size:1rem;padding:8px 10px}
     <h2 id="hp">馬達模型參數<small id="pMode">外轉式</small></h2>
     <div class="prow"><select id="pSel" aria-label="已儲存的馬達模型"><option value="">選擇已儲存的馬達模型</option></select><button type="button" class="btn" id="pDel">刪除</button></div>
     <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="模型名稱，例如 FAN-12S-v2" aria-label="模型名稱"><button type="button" class="btn pri" id="pSave">儲存</button></div>
-    <div class="prow"><button type="button" class="btn" id="pExp">匯出 Excel</button><button type="button" class="btn" id="pImpBtn">匯入 Excel</button><input id="pImp" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
+    <div class="prow two"><button type="button" class="btn" id="pExp">匯出 Excel</button><button type="button" class="btn" id="pImpBtn">匯入 Excel</button><input id="pImp" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
+    <div class="prow two"><button type="button" class="btn" id="shOpen">產生分享碼</button><button type="button" class="btn" id="shInOpen">輸入分享碼</button></div>
+    <div class="share" id="shOut" hidden>
+      <div class="shh">產生加密分享碼<button type="button" class="x" data-close="shOut" aria-label="關閉">×</button></div>
+      <div class="shr"><label><input type="radio" name="shScope" value="cur" checked> 目前畫面的參數</label><label><input type="radio" name="shScope" value="all"> 已儲存的全部模型</label></div>
+      <input id="shPw1" type="password" autocomplete="new-password" placeholder="設定密碼（至少 8 碼）" aria-label="設定密碼">
+      <input id="shPw2" type="password" autocomplete="new-password" placeholder="再輸入一次密碼" aria-label="確認密碼">
+      <button type="button" class="btn pri" id="shGen">產生</button>
+      <div id="shRes" hidden>
+        <div class="qr" id="shQr"></div>
+        <p class="shnote">用另一台裝置的相機掃描 QR Code，或複製下方連結／分享碼，再輸入密碼即可匯入。</p>
+        <div class="prow two"><button type="button" class="btn" id="shCopyLink">複製連結</button><button type="button" class="btn" id="shCopyCode">複製分享碼</button></div>
+        <textarea id="shCode" readonly rows="3" aria-label="分享碼"></textarea>
+        <p class="shnote">密碼請另外告知，不要和分享碼放在同一則訊息。</p>
+      </div>
+    </div>
+    <div class="share" id="shIn" hidden>
+      <div class="shh">輸入分享碼<button type="button" class="x" data-close="shIn" aria-label="關閉">×</button></div>
+      <textarea id="shInCode" rows="3" placeholder="貼上分享碼或連結" aria-label="分享碼"></textarea>
+      <input id="shInPw" type="password" autocomplete="current-password" placeholder="密碼" aria-label="密碼">
+      <button type="button" class="btn pri" id="shImport">解密並匯入</button>
+    </div>
     <p class="pmsg" id="pMsg" role="status"></p>
   </section>
   <section class="step">
@@ -383,6 +416,7 @@ R(T) = R₂₀ · (234.5+T)/254.5</pre>
 <div id="pop" role="dialog" aria-modal="false" hidden><button class="x" type="button" aria-label="關閉">×</button><div id="popBody"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
@@ -1169,6 +1203,75 @@ $('pImp').addEventListener('change',()=>{
   rd.readAsArrayBuffer(file);
 });
 fillSel('');
+
+/* ---------- 加密分享碼：PBKDF2(SHA-256, 250k) → AES-256-GCM，全部在瀏覽器內完成 ---------- */
+const SITE='https://siderpan.github.io/winding-resistance-calculator/';
+const b64u={enc:u=>{let s='';for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');},
+  dec:t=>{t=t.replace(/-/g,'+').replace(/_/g,'/');while(t.length%4)t+='=';const s=atob(t),u=new Uint8Array(s.length);for(let i=0;i<s.length;i++)u[i]=s.charCodeAt(i);return u;}};
+async function zip(u,inv){if(typeof CompressionStream==='undefined')return null;const cs=inv?new DecompressionStream('deflate-raw'):new CompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(cs)).arrayBuffer());}
+async function deriveKey(pw,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);}
+async function sealShare(obj,pw){
+  let raw=new TextEncoder().encode(JSON.stringify(obj)), flag=0;
+  const z=await zip(raw); if(z&&z.length<raw.length){raw=z;flag=1;}
+  const salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await deriveKey(pw,salt),raw));
+  const out=new Uint8Array(1+16+12+ct.length); out[0]=flag; out.set(salt,1); out.set(iv,17); out.set(ct,29);
+  return 'RC1.'+b64u.enc(out);
+}
+async function openShare(code,pw){
+  const m=String(code).match(/RC1\.([A-Za-z0-9_-]+)/); if(!m) throw new Error('fmt');
+  const u=b64u.dec(m[1]); if(u.length<45) throw new Error('fmt');
+  let raw; try{raw=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(17,29)},await deriveKey(pw,u.slice(1,17)),u.slice(29)));}catch(e){throw new Error('pw');}
+  if(u[0]===1){raw=await zip(raw,true); if(!raw) throw new Error('zip');}
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+const packEnt=e=>[e.name,e.motor,e.pat||'sq',e.conn||'Y',IN_IDS.map(id=>e.vals[id]!=null?Number(e.vals[id]):null)];
+function unpack(o){if(!o||o.v!==1||!Array.isArray(o.m)) throw new Error('fmt');
+  return o.m.map(r=>({name:String(r[0]).slice(0,60),motor:r[1]==='in'?'in':'out',pat:r[2],conn:r[3],
+    vals:Object.fromEntries((o.ids||IN_IDS).map((id,i)=>[id,r[4][i]]).filter(([id,v])=>IN_IDS.includes(id)&&v!=null&&isFinite(v)).map(([id,v])=>[id,String(v)]))}));}
+const showPanel=id=>{for(const x of ['shOut','shIn']) $(x).hidden=x!==id;};
+document.querySelectorAll('.share .x').forEach(b=>b.addEventListener('click',()=>{$(b.dataset.close).hidden=true;}));
+$('shOpen').addEventListener('click',()=>{showPanel($('shOut').hidden?'shOut':null);$('shRes').hidden=true;if(!$('shOut').hidden)$('shPw1').focus();});
+$('shInOpen').addEventListener('click',()=>{showPanel($('shIn').hidden?'shIn':null);if(!$('shIn').hidden)$('shInCode').focus();});
+$('shGen').addEventListener('click',async()=>{
+  const p1=$('shPw1').value, p2=$('shPw2').value;
+  if(p1.length<8){pmsg('密碼至少需要 8 碼。','warn');$('shPw1').focus();return;}
+  if(p1!==p2){pmsg('兩次輸入的密碼不一致。','warn');$('shPw2').focus();return;}
+  if(!window.crypto||!crypto.subtle){pmsg('這個瀏覽器不支援加密功能，請改用最新版 Chrome、Edge 或 Safari。','warn');return;}
+  let ents;
+  if(document.querySelector('input[name="shScope"]:checked').value==='all'){const d=loadP();ents=[...d.out,...d.in];if(!ents.length){pmsg('目前沒有已儲存的模型，請先儲存或改選「目前畫面的參數」。','warn');return;}}
+  else ents=[{name:$('pName').value.trim()||$('pSel').value||'未命名',motor,pat,conn,vals:curVals()}];
+  try{
+    const code=await sealShare({v:1,ids:IN_IDS,m:ents.map(packEnt)},p1), link=SITE+'#c='+code;
+    $('shCode').value=code; $('shRes').hidden=false; $('shRes').dataset.link=link;
+    $('shQr').innerHTML='';
+    if(typeof qrcode!=='undefined'&&link.length<=2000){const q=qrcode(0,'L');q.addData(link);q.make();$('shQr').innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});$('shQr').hidden=false;}
+    else $('shQr').hidden=true;
+    $('shPw1').value=$('shPw2').value='';
+    pmsg(`已產生 ${ents.length} 個模型的加密分享碼`+($('shQr').hidden?'（內容較多，未產生 QR Code，請用連結或分享碼）':'')+'。','ok');
+  }catch(e){pmsg('產生失敗，請再試一次。','warn');}
+});
+const copyTxt=async(t,label)=>{try{await navigator.clipboard.writeText(t);pmsg(`已複製${label}。`,'ok');}catch(e){$('shCode').focus();$('shCode').select();pmsg('無法自動複製，已選取內容，請按 Ctrl+C。','warn');}};
+$('shCopyLink').addEventListener('click',()=>copyTxt($('shRes').dataset.link,'連結'));
+$('shCopyCode').addEventListener('click',()=>copyTxt($('shCode').value,'分享碼'));
+$('shImport').addEventListener('click',async()=>{
+  const code=$('shInCode').value.trim(), pw=$('shInPw').value;
+  if(!code){pmsg('請貼上分享碼或連結。','warn');return;}
+  if(!pw){pmsg('請輸入密碼。','warn');$('shInPw').focus();return;}
+  try{
+    const ents=unpack(await openShare(code,pw)); if(!ents.length) throw new Error('fmt');
+    const d=loadP(), now=new Date().toISOString();
+    for(const e of ents){const rec={...e,savedAt:now};const i=d[e.motor].findIndex(x=>x.name===e.name);if(i>=0)d[e.motor][i]=rec;else d[e.motor].push(rec);}
+    const stored=saveP(d), last=ents[ents.length-1];
+    if(last.motor!==motor) setMotor(last.motor);
+    applySet(last); fillSel(stored?last.name:''); $('pName').value=last.name;
+    $('shInCode').value=$('shInPw').value=''; $('shIn').hidden=true;
+    try{if(/^#c=/.test(location.hash))history.replaceState(null,'',motor==='in'?'#inner':location.pathname);}catch(e){}
+    pmsg(`已解密並匯入 ${ents.length} 個模型`+(stored?'。':'，但瀏覽器不允許儲存，僅套用到目前畫面。'),stored?'ok':'warn');
+  }catch(e){pmsg(e.message==='pw'?'密碼錯誤，或分享碼不完整。':'分享碼格式不正確，請確認是否完整複製。','warn');}
+});
+if(/^#c=RC1\./.test(location.hash)){$('shInCode').value=location.hash.slice(3);showPanel('shIn');setTimeout(()=>{$('shInPw').focus();pmsg('偵測到分享碼，請輸入密碼後按「解密並匯入」。','');},0);}
 /* 參數 ↔ 圖上尺寸：游標移到或聚焦某個輸入欄時，凸顯對應的尺寸標註 */
 const DIMKEY={L:'L',b:'b',h:'h',Ry:'Ry',Z:'Z',Ds:'Ds',Di:'Di',wso:'wso',i:'i',r0:'r0',rf:'rf',tmax:'tmax',d:'dout',dout:'dout',N:'t',ns:'t',g:'t'};
 let hoverKey=null, focusKey=null;
