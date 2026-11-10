@@ -64,12 +64,14 @@ input:hover{border-color:var(--muted)}
 
 .right{display:flex;flex-direction:column;gap:16px;min-width:0}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0}
-.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:0;overflow:hidden;border-top:4px solid var(--copper)}
-.kpis>div{padding:14px 16px;min-width:0}
-.kpis>div+div{border-left:1px solid var(--line)}
-@media (max-width:720px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis>div:nth-child(3){border-left:0}.kpis>div:nth-child(n+3){border-top:1px solid var(--line)}}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;padding:0;overflow:hidden;border-top:4px solid var(--copper);background:var(--line)}
+.kpis>div{padding:14px 16px;min-width:0;background:var(--panel)}
+.kpis .eyebrow span{white-space:nowrap}
+@media (max-width:1180px){.kpis{grid-template-columns:repeat(6,minmax(0,1fr))}.kpis>div{grid-column:span 2}.kpis>div:nth-child(n+4){grid-column:span 3}}
+@media (max-width:720px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis>div,.kpis>div:nth-child(n+4){grid-column:auto}.kpis>div:first-child{grid-column:1/-1}.kpis .big{font-size:1.4rem}}
 .eyebrow{font-size:.74rem;letter-spacing:.04em;color:var(--muted);display:flex;align-items:center;gap:6px}
-.big{font-family:var(--f-mono);font-size:1.55rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:2px;white-space:nowrap}
+.big{font-family:var(--f-mono);font-size:1.55rem;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:2px}
+.big small{display:block;white-space:nowrap;margin-top:2px}
 .big small{font-size:.8rem;color:var(--muted);font-weight:400}
 .big.cu{color:var(--copper)}
 .stator{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:start}
@@ -207,6 +209,7 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
   <div class="card kpis" aria-live="polite">
     <div><div class="eyebrow"><span>端子間電阻 R<sub>LL</sub></span><button class="info" data-k="RLL" type="button">?</button></div><div class="big cu" id="kRLL">—</div></div>
     <div><div class="eyebrow"><span>工作溫度 R<sub>LL</sub></span></div><div class="big" id="kRLLop">—</div></div>
+    <div><div class="eyebrow"><span>每相 R<sub>ph</sub></span><button class="info" data-k="Rph" type="button">?</button></div><div class="big" id="kRph">—</div></div>
     <div><div class="eyebrow"><span>平均匝長 MLT</span><button class="info" data-k="mlt" type="button">?</button></div><div class="big" id="kMLT">—</div></div>
     <div><div class="eyebrow">每線圈線長</div><div class="big" id="kLen">—</div></div>
   </div>
@@ -319,6 +322,7 @@ const G={
   a:['並聯路數','a','每相線圈分成幾條並聯支路，電阻與 a² 成反比。'],
   lead:['引出線','','每條支路從繞組到端子或焊點的導線長度。'],
   rho:['電阻率','ρ₂₀','20 °C 時的電阻率。IACS 100% 退火銅為 0.017241 Ω·mm²/m。'],
+  Rph:['相電阻','R_ph','單一相繞組本身的電阻，含該相所有線圈（依串並聯路數）與引出線。Δ 接或 Y 接沒有拉出中性點時無法直接量到，需由端子間電阻換算：\nY：R_ph = R_LL ÷ 2\nΔ：R_ph = R_LL × 3/2'],
   RLL:['端子間電阻','R_LL','任兩端子間量得的直流電阻。\nY：2·R_ph\nΔ：⅔·R_ph'],
   mlt:['平均匝長','MLT','總線長 ÷ 匝數。本頁逐層算出每一匝的實際周長再平均，不必假設線圈厚度中心位置；外層匝數多時，MLT 會往外層偏。'],
 };
@@ -705,6 +709,7 @@ function drawB(R){
 function renderTables(R){
   const {p}=R, RLL=R.Rph20*R.kLL;
   $('kRLL').innerHTML=f(RLL*kT(p.Tref))+' <small>Ω @ '+p.Tref+' °C</small>';
+  $('kRph').innerHTML=f(R.Rph20*kT(p.Tref))+' <small>Ω @ '+p.Tref+' °C</small>';
   $('kRLLop').innerHTML=f(RLL*kT(p.Top))+' <small>Ω @ '+p.Top+' °C</small>';
   $('kMLT').innerHTML=f(R.mlt,2)+' <small>mm</small>';
   $('kLen').innerHTML=f(R.strand/1000,3)+' <small>m'+(p.ns>1?' × '+p.ns+' 股':'')+'</small>';
@@ -752,7 +757,7 @@ function run(){
   const R=compute();
   if(R.err){
     $('msgs').innerHTML=`<li class="warn">${R.err}</li>`;
-    ['kRLL','kRLLop','kMLT','kLen'].forEach(id=>$(id).textContent='—');
+    ['kRLL','kRLLop','kRph','kMLT','kLen'].forEach(id=>$(id).textContent='—');
     $('detail').innerHTML='';$('lt').innerHTML='';$('svgA').innerHTML='';$('svgB').innerHTML='';$('svgS').innerHTML='';$('sTbl').innerHTML='';$('sMsgs').innerHTML='';
     return;
   }
