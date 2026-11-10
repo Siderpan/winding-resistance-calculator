@@ -45,10 +45,12 @@ section.step{background:var(--panel);border:1px solid var(--line);border-radius:
 .step h2{display:flex;align-items:baseline;gap:10px;margin:0 0 10px;font-size:1rem;font-weight:700}
 .step h2 .n{font-family:var(--f-mono);font-size:.78rem;color:var(--copper);border:1px solid var(--copper);border-radius:4px;padding:0 6px;line-height:1.5}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 14px}
-.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f{display:flex;flex-direction:column;justify-content:space-between;gap:3px;min-width:0}
 .f.full{grid-column:1/-1}
 .lab{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:500;min-height:20px}
-.lab .tx{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lab .tx{white-space:normal;line-height:1.3}
+.lab{align-items:flex-start}
+.lab .info{margin-top:1px}
 .lab .u{color:var(--muted);font-weight:400;font-family:var(--f-mono);font-size:.74rem;margin-left:auto}
 sub{font-size:.72em;vertical-align:-.25em;line-height:0}
 input,select{font-family:var(--f-mono);font-size:.93rem;padding:7px 9px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
@@ -148,6 +150,10 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 .cad .dim.hot text,.cad .dim.hot tspan{fill:var(--copper)!important}
 .f.hot .lab .tx{color:var(--copper)}
 .f.hot input{border-color:var(--copper)}
+/* sticky results */
+.card.kpis{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;box-shadow:0 6px 14px -10px rgba(20,30,40,.35)}
+@media (max-width:720px){.card.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.card.kpis>div,.card.kpis>div:nth-child(n+4){grid-column:auto}.card.kpis>div:first-child{grid-column:auto}
+  .card.kpis>div{padding:7px 9px}.card.kpis>div:last-child{grid-column:span 2}.card.kpis .big{font-size:1.05rem}.card.kpis .big small{font-size:.66rem}.card.kpis .eyebrow{font-size:.66rem}.card.kpis .eyebrow .info{display:none}}
 /* presets */
 .preset h2 small{font-weight:400;font-size:.78rem;color:var(--muted);margin-left:auto}
 .prow{display:flex;gap:8px;margin-top:8px;min-width:0}
@@ -215,10 +221,10 @@ input,select{font-size:1rem;padding:8px 10px}
 <div class="grid">
 <div class="inputs">
   <section class="step preset" aria-labelledby="hp">
-    <h2 id="hp">馬達參數組<small id="pMode">外轉式</small></h2>
-    <div class="prow"><select id="pSel" aria-label="已儲存的參數組"><option value="">選擇已儲存的參數組</option></select><button type="button" class="btn" id="pDel">刪除</button></div>
-    <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="名稱，例如 FAN-12S-v2" aria-label="參數組名稱"><button type="button" class="btn pri" id="pSave">儲存</button></div>
-    <div class="prow"><button type="button" class="btn" id="pExp">匯出 JSON</button><button type="button" class="btn" id="pImpBtn">匯入 JSON</button><input id="pImp" type="file" accept=".json,application/json" hidden></div>
+    <h2 id="hp">馬達模型參數<small id="pMode">外轉式</small></h2>
+    <div class="prow"><select id="pSel" aria-label="已儲存的馬達模型"><option value="">選擇已儲存的馬達模型</option></select><button type="button" class="btn" id="pDel">刪除</button></div>
+    <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="模型名稱，例如 FAN-12S-v2" aria-label="模型名稱"><button type="button" class="btn pri" id="pSave">儲存</button></div>
+    <div class="prow"><button type="button" class="btn" id="pExp">匯出 Excel</button><button type="button" class="btn" id="pImpBtn">匯入 Excel</button><input id="pImp" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
     <p class="pmsg" id="pMsg" role="status"></p>
   </section>
   <section class="step">
@@ -357,6 +363,7 @@ R(T) = R₂₀ · (234.5+T)/254.5</pre>
 
 <div id="pop" role="dialog" aria-modal="false" hidden><button class="x" type="button" aria-label="關閉">×</button><div id="popBody"></div></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 (function(){
 const $=id=>document.getElementById(id);
@@ -421,7 +428,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 addEventListener('scroll',()=>{if(popBtn){pop.hidden=true;popBtn.setAttribute('aria-expanded','false');popBtn=null;}},{passive:true});
 
 /* ---------- state ---------- */
-let pat='sq', conn='Y', motor='out', paintHot=()=>{};
+let pat='sq', conn='Y', motor='out', paintHot=()=>{}, lastR=null;
 const GM={
   out:{
     Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
@@ -964,7 +971,7 @@ function focusLayer(k,pin){
 }
 
 function run(){
-  const R=compute();
+  const R=compute(); lastR=R;
   if(R.err){
     $('msgs').innerHTML=`<li class="warn">${R.err}</li>`;
     ['kRLL','kRLLop','kRph','kMLT','kLen'].forEach(id=>$(id).textContent='—');
@@ -979,7 +986,7 @@ document.querySelectorAll('.inputs input[type="number"]').forEach(el=>{el.addEve
 /* Tab 直接在輸入欄之間移動：說明鈕與切換鈕不進入 Tab 順序（仍可用滑鼠點選） */
 document.querySelectorAll('.inputs .info, .inputs .seg button').forEach(b=>b.setAttribute('tabindex','-1'));
 
-/* ---------- 馬達參數組：儲存於本機瀏覽器，可匯出／匯入 JSON ---------- */
+/* ---------- 馬達模型參數：儲存於本機瀏覽器，可匯出／匯入 Excel ---------- */
 const PKEY='wr-presets';
 const loadP=()=>{try{const d=JSON.parse(localStorage.getItem(PKEY));if(d&&typeof d==='object')return {out:d.out||[],in:d.in||[]};}catch(e){}return {out:[],in:[]};};
 const saveP=d=>{try{localStorage.setItem(PKEY,JSON.stringify(d));return true;}catch(e){return false;}};
@@ -987,9 +994,9 @@ const curVals=()=>Object.fromEntries(IN_IDS.map(id=>[id,$(id).value]));
 const pmsg=(t,c)=>{const m=$('pMsg');m.textContent=t;m.className='pmsg'+(c?' '+c:'');};
 function fillSel(sel){
   const list=loadP()[motor].slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
-  $('pSel').innerHTML='<option value="">'+(list.length?'選擇已儲存的參數組':'尚未儲存任何參數組')+'</option>'+list.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}</option>`).join('');
+  $('pSel').innerHTML='<option value="">'+(list.length?'選擇已儲存的馬達模型':'尚未儲存任何馬達模型')+'</option>'+list.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}</option>`).join('');
   $('pSel').value=sel||'';
-  $('pMode').textContent=(motor==='out'?'外轉式':'內轉式')+' · '+list.length+' 組';
+  $('pMode').textContent=(motor==='out'?'外轉式':'內轉式')+' · '+list.length+' 個';
 }
 function applySet(e){
   for(const id of IN_IDS) if(e.vals&&e.vals[id]!=null) $(id).value=e.vals[id];
@@ -999,11 +1006,11 @@ function applySet(e){
 }
 $('pSave').addEventListener('click',()=>{
   const name=$('pName').value.trim();
-  if(!name){pmsg('請先輸入名稱。','warn');$('pName').focus();return;}
+  if(!name){pmsg('請先輸入模型名稱。','warn');$('pName').focus();return;}
   const d=loadP(), arr=d[motor], i=arr.findIndex(e=>e.name===name);
   const ent={name,motor,savedAt:new Date().toISOString(),vals:curVals(),pat,conn};
   if(i>=0) arr[i]=ent; else arr.push(ent);
-  if(!saveP(d)){pmsg('這個瀏覽器不允許儲存，請改用「匯出 JSON」保存。','warn');return;}
+  if(!saveP(d)){pmsg('這個瀏覽器不允許儲存，請改用「匯出 Excel」保存。','warn');return;}
   fillSel(name); pmsg((i>=0?'已更新':'已儲存')+`「${name}」。`,'ok');
 });
 $('pSel').addEventListener('change',()=>{
@@ -1014,44 +1021,79 @@ $('pSel').addEventListener('change',()=>{
 let delArm=null;
 $('pDel').addEventListener('click',()=>{
   const name=$('pSel').value, b=$('pDel');
-  if(!name){pmsg('請先從清單選擇要刪除的參數組。','warn');return;}
+  if(!name){pmsg('請先從清單選擇要刪除的模型。','warn');return;}
   if(delArm!==name){delArm=name;b.textContent='確定刪除？';b.classList.add('danger');
     setTimeout(()=>{if(delArm===name){delArm=null;b.textContent='刪除';b.classList.remove('danger');}},3000);return;}
   const d=loadP(); d[motor]=d[motor].filter(e=>e.name!==name); saveP(d);
   delArm=null;b.textContent='刪除';b.classList.remove('danger');
   fillSel(''); pmsg(`已刪除「${name}」。`,'ok');
 });
+const PAT_TXT={sq:'整齊方格',or:'正交嵌入'}, CONN_TXT={Y:'Y 星形',D:'Δ 三角形'};
+const labOf=id=>{const l=document.querySelector(`label[for="${id}"]`);return l?(l.querySelector('.tx')||l).textContent.trim():id;};
+const unitOf=id=>{const l=document.querySelector(`label[for="${id}"] .u`);return l?l.textContent.trim():'';};
 $('pExp').addEventListener('click',()=>{
+  if(typeof XLSX==='undefined'){pmsg('Excel 元件尚未載入，請確認網路連線後重新整理。','warn');return;}
   const name=$('pName').value.trim()||$('pSel').value||'未命名';
-  const ent={type:'winding-resistance-preset',version:1,name,motor,savedAt:new Date().toISOString(),vals:curVals(),pat,conn};
-  try{
-    const url=URL.createObjectURL(new Blob([JSON.stringify(ent,null,2)],{type:'application/json'}));
-    const a=document.createElement('a');a.href=url;a.download=name.replace(/[\\/:*?"<>|]+/g,'_')+'.json';document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-    pmsg(`已匯出「${name}」目前的參數。`,'ok');
-  }catch(e){pmsg('匯出失敗：瀏覽器不允許下載檔案。','warn');}
+  const rows=[['項目','代號','數值','單位'],
+    ['模型名稱','name',name,''],
+    ['馬達型式','motor',motor==='out'?'外轉式':'內轉式',''],
+    ['排線方式','pat',PAT_TXT[pat],''],
+    ['接線方式','conn',CONN_TXT[conn],''],
+    ...IN_IDS.map(id=>[labOf(id),id,Number($(id).value),unitOf(id)])];
+  const wb=XLSX.utils.book_new(), ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:20},{wch:8},{wch:22},{wch:14}];
+  XLSX.utils.book_append_sheet(wb,ws,'馬達模型參數');
+  const R=lastR;
+  if(R&&!R.err){
+    const p=R.p, res=[['項目','數值','單位'],
+      ['端子間電阻 R_LL（'+(conn==='Y'?'Y':'Δ')+'）@ '+p.Tref+' °C',+(R.Rph20*R.kLL*kT(p.Tref)).toFixed(4),'Ω'],
+      ['端子間電阻 R_LL @ '+p.Top+' °C',+(R.Rph20*R.kLL*kT(p.Top)).toFixed(4),'Ω'],
+      ['每相 R_ph @ '+p.Tref+' °C',+(R.Rph20*kT(p.Tref)).toFixed(4),'Ω'],
+      ['單一線圈 R_coil @ 20 °C',+R.Rcoil.toFixed(4),'Ω'],
+      ['平均匝長 MLT',+R.mlt.toFixed(3),'mm'],
+      ['每線圈線長',+(R.strand/1000).toFixed(4),'m'],
+      ['每相線長',+R.phaseLen.toFixed(4),'m'],
+      ['層數',R.layers.length,'層'],
+      ['線圈厚度 t（單邊）',+R.t.toFixed(3),'mm'],
+      ['繞線窗口佔積率',+(R.fill*100).toFixed(2),'%']];
+    if(R.st&&!R.st.err) res.push(['槽面積',+R.st.aSlot.toFixed(3),'mm²'],['槽滿率（裸銅）',+(R.st.fillCu*100).toFixed(2),'%'],['槽中央最小間隙',+(2*R.st.minGap).toFixed(3),'mm']);
+    const ws2=XLSX.utils.aoa_to_sheet(res); ws2['!cols']=[{wch:30},{wch:14},{wch:8}];
+    XLSX.utils.book_append_sheet(wb,ws2,'計算結果');
+  }
+  try{XLSX.writeFile(wb,name.replace(/[\\/:*?"<>|]+/g,'_')+'.xlsx');pmsg(`已匯出「${name}」的 Excel 檔。`,'ok');}
+  catch(e){pmsg('匯出失敗：瀏覽器不允許下載檔案。','warn');}
 });
 $('pImpBtn').addEventListener('click',()=>$('pImp').click());
 $('pImp').addEventListener('change',()=>{
   const file=$('pImp').files[0]; if(!file) return;
+  if(typeof XLSX==='undefined'){pmsg('Excel 元件尚未載入，請確認網路連線後重新整理。','warn');$('pImp').value='';return;}
   const rd=new FileReader();
   rd.onload=()=>{
     try{
-      const raw=JSON.parse(rd.result), list=Array.isArray(raw)?raw:[raw];
-      const ok=list.filter(e=>e&&typeof e.vals==='object'&&(e.motor==='out'||e.motor==='in'));
-      if(!ok.length) throw 0;
-      const d=loadP();
-      for(const e of ok){const nm=String(e.name||file.name.replace(/\.json$/i,'')).slice(0,60);
-        const ent={name:nm,motor:e.motor,savedAt:new Date().toISOString(),vals:e.vals,pat:e.pat,conn:e.conn};
-        const i=d[e.motor].findIndex(x=>x.name===nm); if(i>=0) d[e.motor][i]=ent; else d[e.motor].push(ent);}
-      const stored=saveP(d), last=ok[ok.length-1], nm=String(last.name||file.name.replace(/\.json$/i,'')).slice(0,60);
-      if(last.motor!==motor) setMotor(last.motor);
-      applySet(last); fillSel(stored?nm:''); $('pName').value=nm;
-      pmsg(`已匯入「${nm}」`+(ok.length>1?`等 ${ok.length} 組`:'')+(stored?'。':'，但瀏覽器不允許儲存，僅套用到目前畫面。'),stored?'ok':'warn');
-    }catch(e){pmsg('檔案格式不正確，請選擇由本工具匯出的 JSON。','warn');}
+      const wb=XLSX.read(new Uint8Array(rd.result),{type:'array'});
+      const ws=wb.Sheets['馬達模型參數']||wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      const ent={name:file.name.replace(/\.xlsx?$/i,''),motor:null,vals:{},pat:null,conn:null};
+      for(const r of rows){
+        const key=String(r[1]||'').trim(), val=r[2];
+        if(key==='name'&&String(val).trim()) ent.name=String(val).trim().slice(0,60);
+        else if(key==='motor') ent.motor=/內|in/i.test(val)?'in':/外|out/i.test(val)?'out':null;
+        else if(key==='pat') ent.pat=/正交|or/i.test(val)?'or':'sq';
+        else if(key==='conn') ent.conn=/Δ|三角|D/i.test(val)?'D':'Y';
+        else if(IN_IDS.includes(key)&&val!==''&&isFinite(Number(val))) ent.vals[key]=String(Number(val));
+      }
+      if(!ent.motor||Object.keys(ent.vals).length<5) throw 0;
+      const d=loadP(), nm=ent.name;
+      const rec={name:nm,motor:ent.motor,savedAt:new Date().toISOString(),vals:ent.vals,pat:ent.pat,conn:ent.conn};
+      const i=d[ent.motor].findIndex(x=>x.name===nm); if(i>=0) d[ent.motor][i]=rec; else d[ent.motor].push(rec);
+      const stored=saveP(d);
+      if(ent.motor!==motor) setMotor(ent.motor);
+      applySet(rec); fillSel(stored?nm:''); $('pName').value=nm;
+      pmsg(`已匯入「${nm}」`+(stored?'並存入模型清單。':'，但瀏覽器不允許儲存，僅套用到目前畫面。'),stored?'ok':'warn');
+    }catch(e){pmsg('檔案格式不正確，請選擇由本工具匯出的 Excel 檔。','warn');}
     $('pImp').value='';
   };
-  rd.readAsText(file);
+  rd.readAsArrayBuffer(file);
 });
 fillSel('');
 /* 參數 ↔ 圖上尺寸：游標移到或聚焦某個輸入欄時，凸顯對應的尺寸標註 */
