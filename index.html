@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="description" content="馬達繞組電阻計算：依齒部尺寸與絕緣厚度即時繪出導線排列，逐層累加線長求平均匝長 MLT，並算出相電阻與端子間電阻。">
 <title>電阻計算</title>
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
@@ -154,6 +156,9 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 .card.kpis{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;box-shadow:0 6px 14px -10px rgba(20,30,40,.35)}
 @media (max-width:720px){.card.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.card.kpis>div,.card.kpis>div:nth-child(n+4){grid-column:auto}.card.kpis>div:first-child{grid-column:auto}
   .card.kpis>div{padding:7px 9px}.card.kpis>div:last-child{grid-column:span 2}.card.kpis .big{font-size:1.05rem}.card.kpis .big small{font-size:.66rem}.card.kpis .eyebrow{font-size:.66rem}.card.kpis .eyebrow .info{display:none}}
+/* brand */
+h1.title{display:flex;align-items:center;gap:12px}
+h1.title .brand{flex:none;width:40px;height:40px}
 /* presets */
 .preset h2 small{font-weight:400;font-size:.78rem;color:var(--muted);margin-left:auto}
 .prow{display:flex;gap:8px;margin-top:8px;min-width:0}
@@ -209,7 +214,7 @@ input,select{font-size:1rem;padding:8px 10px}
 </div>
 <header class="top">
   <div>
-    <h1>電阻計算</h1>
+    <h1 class="title"><svg class="brand" width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">  <rect width="64" height="64" rx="14" fill="#1e2a31"/>  <path d="M12 13a2 2 0 0 1 2-2h36a2 2 0 0 1 2 2v5H38v32H26V18H12z" fill="#d6e3ea"/>  <path d="M9 53.5Q32 45 55 53.5V57Q32 48.5 9 57z" fill="#d6e3ea"/>  <polyline points="17.5,24.5 46.5,29.5 17.5,34.5 46.5,39.5 17.5,44.5" fill="none" stroke="#e8894a" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>電阻計算</span></h1>
   </div>
   <div class="theme" role="group" aria-label="頁面明暗">
     <button type="button" data-t="light" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>淺色</button>
