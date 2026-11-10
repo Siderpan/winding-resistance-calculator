@@ -159,6 +159,18 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 /* brand */
 h1.title{display:flex;align-items:center;gap:12px}
 h1.title .brand{flex:none;width:40px;height:40px}
+/* zoom */
+.cad{position:relative;overflow:hidden}
+.cad svg{touch-action:none;user-select:none}
+.cad.zoomed svg{cursor:grab}
+.cad.zoomed svg *{vector-effect:non-scaling-stroke}
+.cad.panning svg{cursor:grabbing}
+.zbar{position:absolute;top:8px;right:8px;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px;opacity:.55;transition:opacity .15s;z-index:2}
+.cad:hover .zbar,.zbar:focus-within,.cad.zoomed .zbar{opacity:1}
+.zbar button{font:500 .8rem/1 var(--f-body);border:0;background:transparent;color:var(--ink);min-width:26px;height:24px;border-radius:4px;cursor:pointer;padding:0 6px}
+.zbar button:hover{background:var(--sunk)}
+.zbar .zp{font-family:var(--f-mono);font-size:.74rem;color:var(--muted);min-width:42px;text-align:center}
+.zbar .zr[disabled]{opacity:.4;cursor:default}
 /* presets */
 .preset h2 small{font-weight:400;font-size:.78rem;color:var(--muted);margin-left:auto}
 .prow{display:flex;gap:8px;margin-top:8px;min-width:0}
@@ -358,7 +370,7 @@ R(T) = R₂₀ · (234.5+T)/254.5</pre>
     <div class="view">
       <h3>定子全圖<span id="sSub"></span></h3>
       <div class="stator">
-        <div class="cad"><svg id="svgS" viewBox="0 0 520 520" role="img" aria-label="定子全圖與各槽排線"></svg></div>
+        <div class="cad" id="cadS"><svg id="svgS" viewBox="0 0 520 520" role="img" aria-label="定子全圖與各槽排線"></svg></div>
         <div><table class="k" id="sTbl"></table><ul class="msgs" id="sMsgs" style="margin-top:12px"></ul></div>
       </div>
     </div>
@@ -939,6 +951,49 @@ function drawB(R){
   svg.innerHTML=g;
 }
 
+/* ---------- 圖面縮放：滾輪縮放（以游標為中心）、拖曳平移、按鍵還原 ---------- */
+const ZOOM_IDS=['svgA','svgB','svgS'], ZS={};
+function applyZoom(svg){
+  const b=(svg.dataset.base||svg.getAttribute('viewBox')).split(/\s+/).map(Number);
+  const z=ZS[svg.id]||(ZS[svg.id]={k:1,cx:.5,cy:.5});
+  const w=b[2]/z.k, h=b[3]/z.k;
+  z.cx=Math.min(1-.5/z.k,Math.max(.5/z.k,z.cx)); z.cy=Math.min(1-.5/z.k,Math.max(.5/z.k,z.cy));
+  svg.setAttribute('viewBox',`${n2(b[0]+z.cx*b[2]-w/2)} ${n2(b[1]+z.cy*b[3]-h/2)} ${n2(w)} ${n2(h)}`);
+  const cad=svg.parentElement; cad.classList.toggle('zoomed',z.k>1.001);
+  const bar=cad.querySelector('.zbar'); if(bar){bar.querySelector('.zp').textContent=Math.round(z.k*100)+'%';bar.querySelector('.zr').disabled=z.k<=1.001;}
+}
+function zoomAt(svg,factor,fx,fy){
+  const z=ZS[svg.id]||(ZS[svg.id]={k:1,cx:.5,cy:.5});
+  const k2=Math.min(12,Math.max(1,z.k*factor)); if(k2===z.k) return;
+  // fx,fy：游標在目前可視範圍內的比例位置；縮放後讓同一點維持在游標下
+  const px=z.cx+(fx-.5)/z.k, py=z.cy+(fy-.5)/z.k;
+  z.cx=px-(fx-.5)/k2; z.cy=py-(fy-.5)/k2; z.k=k2;
+  applyZoom(svg);
+}
+for(const id of ZOOM_IDS){
+  const svg=$(id), cad=svg.parentElement;
+  const bar=document.createElement('div'); bar.className='zbar';
+  bar.innerHTML='<button type="button" class="zo" aria-label="縮小" title="縮小">−</button><span class="zp">100%</span><button type="button" class="zi" aria-label="放大" title="放大">+</button><button type="button" class="zr" aria-label="還原原始大小" title="還原原始大小" disabled>還原</button>';
+  cad.appendChild(bar);
+  bar.querySelector('.zi').addEventListener('click',()=>zoomAt(svg,1.4,.5,.5));
+  bar.querySelector('.zo').addEventListener('click',()=>zoomAt(svg,1/1.4,.5,.5));
+  bar.querySelector('.zr').addEventListener('click',()=>{ZS[id]={k:1,cx:.5,cy:.5};applyZoom(svg);});
+  svg.setAttribute('title','滾輪縮放、拖曳平移、雙擊還原');
+  svg.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const r=svg.getBoundingClientRect();
+    zoomAt(svg,Math.exp(-e.deltaY*(e.deltaMode===1?0.05:0.0018)),(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height);
+  },{passive:false});
+  let drag=null;
+  svg.addEventListener('pointerdown',e=>{const z=ZS[id];if(!z||z.k<=1.001||e.button!==0)return;
+    drag={x:e.clientX,y:e.clientY,cx:z.cx,cy:z.cy};svg.setPointerCapture(e.pointerId);cad.classList.add('panning');});
+  svg.addEventListener('pointermove',e=>{if(!drag)return;const z=ZS[id],r=svg.getBoundingClientRect();
+    z.cx=drag.cx-(e.clientX-drag.x)/r.width/z.k; z.cy=drag.cy-(e.clientY-drag.y)/r.height/z.k; applyZoom(svg);});
+  const end=()=>{drag=null;cad.classList.remove('panning');};
+  svg.addEventListener('pointerup',end); svg.addEventListener('pointercancel',end);
+  svg.addEventListener('dblclick',()=>{ZS[id]={k:1,cx:.5,cy:.5};applyZoom(svg);});
+}
+
 /* ---------- tables ---------- */
 function renderTables(R){
   const {p}=R, RLL=R.Rph20*R.kLL;
@@ -986,7 +1041,9 @@ function run(){
     return;
   }
   pinned=null;
+  for(const id of ZOOM_IDS){const el=$(id); if(el.dataset.base) el.setAttribute('viewBox',el.dataset.base);}
   drawA(R);drawB(R);drawS(R);drawConn(R);renderTables(R);
+  for(const id of ZOOM_IDS){const el=$(id); el.dataset.base=el.getAttribute('viewBox'); applyZoom(el);}
   paintHot();
 }
 document.querySelectorAll('.inputs input[type="number"]').forEach(el=>{el.addEventListener('input',run);el.addEventListener('focus',()=>{try{el.select();}catch(e){}});});
