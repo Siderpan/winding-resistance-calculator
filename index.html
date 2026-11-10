@@ -687,7 +687,14 @@ function drawA(R){
   const yIns =x=>flat?yW1:yW0+sg*(yc-sq(Rins,x));
   const yYoke=x=>flat?yW1+p.i:yW0+sg*(yc-sq(Ry,x));
   const yYin =x=>flat?yW1+p.i+yk:yW0+sg*(yc-sq(Ry-sg*yk,x));
-  const Ht=Math.max(yYin(xw),yYin(0));
+  // 軛部只畫到相鄰槽中央附近：以圓心角限制範圍（兩端沿半徑切齊），避免半徑小時畫成大半圈而誤導
+  let xyo=xw, xyi=xw;
+  if(!flat){
+    const need=Math.asin(Math.min(.95,(p.b/2+p.i+Math.max(t,p.tmax||0)+p.dout)/Ry));
+    const phi=Math.min(Math.max(need,R.st?R.st.al:0),40*Math.PI/180);
+    xyo=Math.min(xw,Ry*Math.sin(phi)); xyi=xyo*(Ry-sg*yk)/Ry;
+  }
+  const Ht=Math.max(yYin(xyi),yYin(0));
   const s=Math.min((W-220)/(2*xw),330/Ht);
   const cx=W/2, top=28;
   const X=x=>cx+x*s, Y=y=>top+y*s;
@@ -698,14 +705,15 @@ function drawA(R){
   const poly=pts=>'M'+pts.map(q=>P(q[0],q[1])).join('L')+'Z';
   let g=DEFS;
   // 齒＋軛部（一體）
-  const body=[[-p.b/2,sh],...arc(yYoke,-p.b/2,-xw),...arc(yYin,-xw,xw,60),...arc(yYoke,xw,p.b/2),[p.b/2,sh]];
+  const body=[[-p.b/2,sh],...arc(yYoke,-p.b/2,-xyo),...arc(yYin,-xyi,xyi,60),...arc(yYoke,xyo,p.b/2),[p.b/2,sh]];
   g+=`<path d="${poly(body)}" fill="var(--steel-fill)" stroke="var(--steel)" stroke-linejoin="round"/>`;
   // 極靴
   const shH=SH.half;
   g+=`<path d="M${SH.pts.map(q=>P(q[0],q[1]+yW0)).join('L')}" fill="var(--steel-fill)" stroke="var(--steel)" stroke-linejoin="round"/>`;
   g+=`<text x="${n2(X(-shH)-6)}" y="${n2(Y(sh*.4)+4)}" text-anchor="end">極靴</text>`;
-  g+=`<text x="${n2(X(-xw)+6)}" y="${n2(Y((yYoke(-xw)+yYin(-xw))/2)+4)}">軛部</text>`;
-  if(!flat) g+=`<g class="dim" data-dim="Ry"><text class="dimt" x="${n2(X(xw)-6)}" y="${n2(Y((yYoke(xw)+yYin(xw))/2)+4)}" text-anchor="end">${SUB('R','y')} = ${f(Ry,2)}</text></g>`;
+  {const xl=-(p.b/2+(xyo-p.b/2)*.5), xr=-xl;
+   g+=`<text x="${n2(X(xl))}" y="${n2(Y((yYoke(xl)+yYin(xl*(Ry-sg*yk)/Ry||xl))/2)+4)}" text-anchor="middle">軛部</text>`;
+   if(!flat) g+=`<g class="dim" data-dim="Ry"><text class="dimt" x="${n2(X(xr))}" y="${n2(Y((yYoke(xr)+yYin(xr*(Ry-sg*yk)/Ry))/2)+4)}" text-anchor="middle">${SUB('R','y')} = ${f(Ry,2)}</text></g>`;}
   // 絕緣：極靴側平面、齒側直條、軛部側沿圓弧（厚度 i）
   if(p.i>0){
     const half=insHalf(R,Math.min(p.b/2+p.i+tw,xw)).map(q=>[q[0],q[1]+yW0]);
