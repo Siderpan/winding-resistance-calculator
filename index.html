@@ -40,7 +40,7 @@ header.top p{margin:.3rem 0 0;color:var(--muted);max-width:66ch;font-size:.92rem
 .theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
 .theme svg{width:14px;height:14px}
 
-.grid{display:grid;grid-template-columns:minmax(0,410px) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
+.grid{display:grid;grid-template-columns:minmax(0,470px) minmax(0,1fr);gap:20px;margin-top:20px;align-items:start}
 @media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
 .inputs{display:flex;flex-direction:column;gap:14px;min-width:0}
 section.step{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px 16px;min-width:0}
@@ -182,7 +182,7 @@ h1.title .brand{flex:none;width:40px;height:40px}
 .btn.pri{background:var(--copper);color:var(--on-accent);border-color:var(--copper);font-weight:500}
 .btn.danger{border-color:var(--warn);color:var(--warn)}
 .prow .btn:not(.pri){flex:0 0 auto}
-.prow:last-of-type .btn{flex:1}
+
 .pmsg{margin:8px 0 0;font-size:.8rem;color:var(--muted);min-height:1.2em}
 .pnote{margin:4px 0 0;font-size:.74rem;color:var(--muted)}
 .pmsg.ok{color:var(--ok)} .pmsg.warn{color:var(--warn)}
@@ -218,6 +218,36 @@ input,select{font-size:1rem;padding:8px 10px}
 @media (max-width:560px){.cad text{font-size:15px}.cad .dimt{font-size:15px}}
 .lt th,.lt td{white-space:nowrap}
 @media (min-width:961px){.inputs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow-y:auto;padding-right:4px;scrollbar-width:thin}}
+/* compact inputs: 全部參數一頁顯示 */
+.inputs{gap:10px}
+.inputs section.step{padding:10px 12px 12px}
+.inputs .step h2{font-size:.92rem;margin:0 0 7px;gap:8px}
+.inputs .step h2 .n{font-size:.72rem}
+.inputs .fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px}
+.inputs .lab{font-size:.78rem;min-height:0;line-height:1.25;gap:4px}
+.inputs .lab .info{width:15px;height:15px;font-size:9px}
+.inputs .inw{position:relative;display:block}
+.inputs .inw input{padding:5px 30px 5px 8px;font-size:.92rem}
+.inputs .inw .u2{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:.7rem var(--f-mono);color:var(--muted);pointer-events:none}
+.inputs .seg button{padding:5px 8px;font-size:.82rem}
+.inputs .seg{margin-bottom:0}
+.inputs .prow{margin-top:6px}
+.inputs .prow select,.inputs .prow input[type=text]{padding:5px 8px;font-size:.88rem}
+.inputs .btn{padding:5px 10px;font-size:.82rem}
+.inputs .preset h2{margin-bottom:2px}
+.inputs .pmsg{margin-top:4px;min-height:0}
+.inputs .warnline{margin-top:6px}
+@media (max-width:520px){.inputs .fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.inputs .srow{flex-direction:row;align-items:center;gap:10px}
+.inputs .srow .lab{flex:0 0 auto}
+.inputs .srow .seg{flex:1}
+.inputs .fields{gap:4px 10px}
+.inputs .inw input{padding-top:4px;padding-bottom:4px}
+.inputs section.step{padding:8px 12px 10px}
+.inputs .step h2{margin-bottom:5px}
+.inputs{gap:8px}
+.inputs .pmsg:empty{display:none}
+.inputs .prow input[type=text]{min-width:120px}
 </style>
 </head>
 <body>
@@ -242,8 +272,7 @@ input,select{font-size:1rem;padding:8px 10px}
   <section class="step preset" aria-labelledby="hp">
     <h2 id="hp">馬達模型參數<small id="pMode">外轉式</small></h2>
     <div class="prow"><select id="pSel" aria-label="已儲存的馬達模型"><option value="">選擇已儲存的馬達模型</option></select><button type="button" class="btn" id="pDel">刪除</button></div>
-    <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="模型名稱，例如 FAN-12S-v2" aria-label="模型名稱"><button type="button" class="btn pri" id="pSave">儲存</button></div>
-    <div class="prow"><button type="button" class="btn" id="pExp">匯出 Excel</button><button type="button" class="btn" id="pImpBtn">匯入 Excel</button><input id="pImp" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
+    <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="模型名稱，例如 FAN-12S-v2" aria-label="模型名稱"><button type="button" class="btn pri" id="pSave">儲存</button><button type="button" class="btn" id="pExp" title="匯出 Excel">匯出 Excel</button><button type="button" class="btn" id="pImpBtn" title="匯入 Excel">匯入 Excel</button><input id="pImp" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></div>
     <p class="pmsg" id="pMsg" role="status"></p>
   </section>
   <section class="step">
@@ -277,9 +306,9 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="dout"><span class="tx">完成外徑 d<sub>o</sub></span><button class="info" data-k="dout" type="button">?</button><span class="u">mm</span></label><input id="dout" type="number" step="0.001" min="0.01" value="0.395"></div>
       <div class="f"><label class="lab" for="N"><span class="tx">每線圈匝數 N</span><button class="info" data-k="N" type="button">?</button><span class="u">匝</span></label><input id="N" type="number" step="1" min="1" value="60"></div>
       <div class="f"><label class="lab" for="ns"><span class="tx">並繞股數 n<sub>s</sub></span><button class="info" data-k="ns" type="button">?</button><span class="u">股</span></label><input id="ns" type="number" step="1" min="1" max="20" value="1"></div>
-      <div class="f full"><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
+      <div class="f"><label class="lab" for="g"><span class="tx">鬆散係數 g</span><button class="info" data-k="g" type="button">?</button></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
+      <div class="f full srow"><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
         <div class="seg" role="group" aria-label="排線方式"><button type="button" id="pSq" aria-pressed="true">整齊方格</button><button type="button" id="pOr" aria-pressed="false">正交嵌入</button></div></div>
-      <div class="f full"><label class="lab" for="g"><span class="tx">排線鬆散係數 g</span><button class="info" data-k="g" type="button">?</button><span class="u">1.00 = 完美</span></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
     </div>
   </section>
 
@@ -290,10 +319,10 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="a"><span class="tx">並聯路數 a</span><button class="info" data-k="a" type="button">?</button><span class="u">路</span></label><input id="a" type="number" step="1" min="1" value="1"></div>
       <div class="f"><label class="lab" for="lead"><span class="tx">引出線長</span><button class="info" data-k="lead" type="button">?</button><span class="u">mm／路</span></label><input id="lead" type="number" step="1" min="0" value="40"></div>
       <div class="f"><label class="lab" for="rho"><span class="tx">ρ<sub>20</sub></span><button class="info" data-k="rho" type="button">?</button><span class="u">Ω·mm²/m</span></label><input id="rho" type="number" step="0.0001" value="0.017241"></div>
-      <div class="f full"><span class="lab"><span class="tx">接線方式</span></span>
-        <div class="seg" role="group" aria-label="接線方式"><button type="button" id="cY" aria-pressed="true">Y 星形</button><button type="button" id="cD" aria-pressed="false">Δ 三角形</button></div></div>
       <div class="f"><label class="lab" for="Tref"><span class="tx">參考溫度</span><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="20"></div>
       <div class="f"><label class="lab" for="Top"><span class="tx">工作溫度</span><span class="u">°C</span></label><input id="Top" type="number" step="1" value="110"></div>
+      <div class="f full srow"><span class="lab"><span class="tx">接線方式</span></span>
+        <div class="seg" role="group" aria-label="接線方式"><button type="button" id="cY" aria-pressed="true">Y 星形</button><button type="button" id="cD" aria-pressed="false">Δ 三角形</button></div></div>
     </div>
   </section>
 </div>
@@ -462,6 +491,25 @@ const GM={
     Di:['定子內徑','D_i','定子孔徑，也就是極靴內緣所在圓的直徑，面對氣隙與轉子磁鐵，決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
     lblRy:'軛部內圓半徑 R<sub>y</sub>'}
 };
+document.querySelectorAll('.inputs .f').forEach(fd=>{
+  const inp=fd.querySelector('input[type="number"]'), u=fd.querySelector('.lab .u'); if(!inp) return;
+  const w=document.createElement('span'); w.className='inw'; inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+  if(u&&u.textContent.trim().length<=4){const t=u.textContent.replace(/[／/].*$/,'').trim(); if(t){const s2=document.createElement('span'); s2.className='u2'; s2.textContent=t; w.appendChild(s2); inp.style.paddingRight=(12+t.length*7)+'px';} u.remove();}
+});
+/* 依螢幕高度微縮左側輸入欄，讓所有參數在一個畫面內顯示 */
+function fitInputs(){
+  const el=document.querySelector('.inputs'); if(!el) return;
+  el.style.zoom=''; el.style.maxHeight='';
+  if(innerWidth<=960) return;
+  let k=Math.max(.8,(innerHeight-24)/(el.scrollHeight+6));
+  if(k>=.999) return;
+  for(let n=0;n<8;n++){
+    el.style.zoom=String(k); el.style.maxHeight=((innerHeight-24)/k)+'px';
+    if(el.scrollHeight<=el.clientHeight+1||k<=.8) break;
+    k=Math.max(.8,k*el.clientHeight/el.scrollHeight-.003);
+  }
+}
+addEventListener('resize',fitInputs);
 const IN_IDS=[...document.querySelectorAll('.inputs input[type="number"]')].map(el=>el.id);
 const VALS={out:Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),
   in:Object.assign(Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),{L:'15',b:'4',h:'7.8',Ry:'25',Z:'12',Ds:'60',Di:'30',wso:'2'})};
@@ -1054,6 +1102,7 @@ function run(){
   drawA(R);drawB(R);drawS(R);drawConn(R);renderTables(R);
   for(const id of ZOOM_IDS){const el=$(id); el.dataset.base=el.getAttribute('viewBox'); applyZoom(el);}
   paintHot();
+  fitInputs();
 }
 document.querySelectorAll('.inputs input[type="number"]').forEach(el=>{el.addEventListener('input',run);el.addEventListener('focus',()=>{try{el.select();}catch(e){}});});
 /* Tab 直接在輸入欄之間移動：說明鈕與切換鈕不進入 Tab 順序（仍可用滑鼠點選） */
