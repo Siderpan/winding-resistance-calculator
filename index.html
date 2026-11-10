@@ -98,7 +98,7 @@ input:hover{border-color:var(--muted)}
 .cad svg{display:block;width:100%;height:auto}
 .cad text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
 .cad .dimt{fill:var(--ink);font-size:12px;font-weight:600}
-@media (max-width:560px){.cad text{font-size:17px}.cad .dimt{font-size:18px}}
+@media (max-width:560px){.cad text{font-size:15px}.cad .dimt{font-size:15px}}
 .cad .lay{transition:opacity .15s}
 .cad.focus .lay{opacity:.18}
 .cad.focus .lay.on{opacity:1}
@@ -139,6 +139,15 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 #pop .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:4px}
 @media (prefers-reduced-motion:no-preference){#pop{animation:pin .14s ease-out}@keyframes pin{from{opacity:0;transform:translateY(4px)}}}
 
+/* dimension highlight */
+.cad .dim{transition:opacity .15s}
+.cad.dimfocus .dim{opacity:.18}
+.cad.dimfocus .dim.hot{opacity:1}
+.cad .dim.hot line,.cad .dim.hot polyline{stroke:var(--copper)!important;stroke-width:1.8}
+.cad .dim.hot circle{fill:var(--copper)}
+.cad .dim.hot text,.cad .dim.hot tspan{fill:var(--copper)!important}
+.f.hot .lab .tx{color:var(--copper)}
+.f.hot input{border-color:var(--copper)}
 /* motor tabs */
 .mtabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
 .mtabs button{font:inherit;font-size:.98rem;font-weight:500;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 18px 9px;cursor:pointer;margin-bottom:-1px}
@@ -168,7 +177,7 @@ input,select{font-size:1rem;padding:8px 10px}
 .legend{font-size:.8rem;margin-top:12px}
 .cad text{font-size:13px}
 .cad .dimt{font-size:14px}
-@media (max-width:560px){.cad text{font-size:17px}.cad .dimt{font-size:18px}}
+@media (max-width:560px){.cad text{font-size:15px}.cad .dimt{font-size:15px}}
 .lt th,.lt td{white-space:nowrap}
 @media (min-width:961px){.inputs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow-y:auto;padding-right:4px;scrollbar-width:thin}}
 </style>
@@ -238,7 +247,7 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="rho"><span class="tx">ρ<sub>20</sub></span><button class="info" data-k="rho" type="button">?</button><span class="u">Ω·mm²/m</span></label><input id="rho" type="number" step="0.0001" value="0.017241"></div>
       <div class="f full"><span class="lab"><span class="tx">接線方式</span></span>
         <div class="seg" role="group" aria-label="接線方式"><button type="button" id="cY" aria-pressed="true">Y 星形</button><button type="button" id="cD" aria-pressed="false">Δ 三角形</button></div></div>
-      <div class="f"><label class="lab" for="Tref"><span class="tx">參考溫度</span><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="25"></div>
+      <div class="f"><label class="lab" for="Tref"><span class="tx">參考溫度</span><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="20"></div>
       <div class="f"><label class="lab" for="Top"><span class="tx">工作溫度</span><span class="u">°C</span></label><input id="Top" type="number" step="1" value="110"></div>
     </div>
   </section>
@@ -256,12 +265,12 @@ input,select{font-size:1rem;padding:8px 10px}
   <div class="card">
     <div class="views">
       <div class="view">
-        <h3>剖面 A–A</h3>
-        <div class="cad" id="cadA"><svg id="svgA" viewBox="0 0 560 420" role="img" aria-label="齒部剖面與導線排列"></svg></div>
+        <h3>槽空間排線圖</h3>
+        <div class="cad" id="cadA"><svg id="svgA" viewBox="0 0 560 420" role="img" aria-label="槽空間排線圖"></svg></div>
       </div>
       <div class="view">
-        <h3>頂視</h3>
-        <div class="cad" id="cadB"><svg id="svgB" viewBox="0 0 380 420" role="img" aria-label="各層匝路徑頂視"></svg></div>
+        <h3>側視圖</h3>
+        <div class="cad" id="cadB"><svg id="svgB" viewBox="0 0 380 420" role="img" aria-label="側視圖：各層匝路徑"></svg></div>
       </div>
     </div>
     <div class="legend">
@@ -392,7 +401,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closePop();});
 addEventListener('scroll',()=>{if(popBtn){pop.hidden=true;popBtn.setAttribute('aria-expanded','false');popBtn=null;}},{passive:true});
 
 /* ---------- state ---------- */
-let pat='sq', conn='Y', motor='out';
+let pat='sq', conn='Y', motor='out', paintHot=()=>{};
 const GM={
   out:{
     Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
@@ -563,19 +572,24 @@ function compute(){
 const rrPath=(cx,cy,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h/2));const x=cx-w/2,y=cy-h/2;
   return r<=0?`M${x} ${y}h${w}v${h}h${-w}Z`:`M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w-2*r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h-2*r)}a${r} ${r} 0 0 1 ${r} ${-r}Z`;};
 const n2=x=>+x.toFixed(2);
-function dimH(x1,x2,y,label,ext1,ext2){ // horizontal dimension
-  let s=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(x1)}" y1="${n2(ext1)}" x2="${n2(x1)}" y2="${n2(y+5)}" stroke-opacity=".45"/><line x1="${n2(x2)}" y1="${n2(ext2)}" x2="${n2(x2)}" y2="${n2(y+5)}" stroke-opacity=".45"/>`;
+function dimH(x1,x2,y,label,ext1,ext2,key){ // horizontal dimension
+  let s=`<g class="dim" data-dim="${key||''}"><g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(x1)}" y1="${n2(ext1)}" x2="${n2(x1)}" y2="${n2(y+5)}" stroke-opacity=".45"/><line x1="${n2(x2)}" y1="${n2(ext2)}" x2="${n2(x2)}" y2="${n2(y+5)}" stroke-opacity=".45"/>`;
   s+=`<line x1="${n2(x1)}" y1="${n2(y)}" x2="${n2(x2)}" y2="${n2(y)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
   const w=Math.abs(x2-x1);
-  s+=w>label.length*7+6?`<text class="dimt" x="${n2((x1+x2)/2)}" y="${n2(y+15)}" text-anchor="middle">${label}</text>`:`<text class="dimt" x="${n2(Math.max(x1,x2)+6)}" y="${n2(y+4)}">${label}</text>`;
-  return s;
+  s+=w>label.length*7.5+6?`<text class="dimt" x="${n2((x1+x2)/2)}" y="${n2(y+15)}" text-anchor="middle">${label}</text>`:`<text class="dimt" x="${n2(Math.max(x1,x2)+6)}" y="${n2(y+4)}">${label}</text>`;
+  return s+'</g>';
 }
-function dimV(x,y1,y2,label,ext){
-  let s=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(ext)}" y1="${n2(y1)}" x2="${n2(x-5)}" y2="${n2(y1)}" stroke-opacity=".45"/><line x1="${n2(ext)}" y1="${n2(y2)}" x2="${n2(x-5)}" y2="${n2(y2)}" stroke-opacity=".45"/>`;
+function dimV(x,y1,y2,label,ext,key){
+  let s=`<g class="dim" data-dim="${key||''}"><g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(ext)}" y1="${n2(y1)}" x2="${n2(x-5)}" y2="${n2(y1)}" stroke-opacity=".45"/><line x1="${n2(ext)}" y1="${n2(y2)}" x2="${n2(x-5)}" y2="${n2(y2)}" stroke-opacity=".45"/>`;
   s+=`<line x1="${n2(x)}" y1="${n2(y1)}" x2="${n2(x)}" y2="${n2(y2)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
   s+=`<text class="dimt" x="${n2(x-6)}" y="${n2((y1+y2)/2+4)}" text-anchor="end">${label}</text>`;
-  return s;
+  return s+'</g>';
 }
+function leader(pts,label,key,anchor){ // 引線標註：pts 為折線，文字放在最後一點
+  const e=pts[pts.length-1], pv=pts[pts.length-2]||e, dir=anchor||(e[0]>=pv[0]?'start':'end');
+  return `<g class="dim" data-dim="${key}"><polyline points="${pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(pts[0][0])}" cy="${n2(pts[0][1])}" r="1.8" fill="var(--ink)"/><text class="dimt" x="${n2(e[0]+(dir==='start'?4:-4))}" y="${n2(e[1]+4)}" text-anchor="${dir}">${label}</text></g>`;
+}
+const SUB=(a,b)=>`${a}<tspan dy="3" font-size="9">${b}</tspan><tspan dy="-3"></tspan>`;
 const DEFS=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="var(--ink)" stroke-width="1.4"/></marker></defs>`;
 
 /* 單側絕緣骨架外形（繞線窗口座標：窗口頂 y=0、向下為正；x 自齒中心線起算） */
@@ -612,7 +626,7 @@ function shoeHalf(R,tw){
   return w;
 }
 
-/* 剖面 A–A：極靴在上、圓弧軛部在下；軛部側絕緣與繞線窗口底部沿圓弧 */
+/* 槽空間排線圖：極靴在上、圓弧軛部在下；軛部側絕緣與繞線窗口底部沿圓弧 */
 function drawA(R){
   const {p,layers,t,pa,Ry,yc,sg,Rins}=R, svg=$('svgA');
   const W=560, flat=!(Ry>0);
@@ -627,7 +641,7 @@ function drawA(R){
   const yYoke=x=>flat?yW1+p.i:yW0+sg*(yc-sq(Ry,x));
   const yYin =x=>flat?yW1+p.i+yk:yW0+sg*(yc-sq(Ry-sg*yk,x));
   const Ht=Math.max(yYin(xw),yYin(0));
-  const s=Math.min((W-150)/(2*xw),330/Ht);
+  const s=Math.min((W-220)/(2*xw),330/Ht);
   const cx=W/2, top=28;
   const X=x=>cx+x*s, Y=y=>top+y*s;
   const H=Math.ceil(top+Ht*s+64);
@@ -644,6 +658,7 @@ function drawA(R){
   g+=`<path d="M${SH.pts.map(q=>P(q[0],q[1]+yW0)).join('L')}" fill="var(--steel-fill)" stroke="var(--steel)" stroke-linejoin="round"/>`;
   g+=`<text x="${n2(X(-shH)-6)}" y="${n2(Y(sh*.4)+4)}" text-anchor="end">極靴</text>`;
   g+=`<text x="${n2(X(-xw)+6)}" y="${n2(Y((yYoke(-xw)+yYin(-xw))/2)+4)}">軛部</text>`;
+  if(!flat) g+=`<g class="dim" data-dim="Ry"><text class="dimt" x="${n2(X(xw)-6)}" y="${n2(Y((yYoke(xw)+yYin(xw))/2)+4)}" text-anchor="end">${SUB('R','y')} = ${f(Ry,2)}</text></g>`;
   // 絕緣：極靴側平面、齒側直條、軛部側沿圓弧（厚度 i）
   if(p.i>0){
     const half=insHalf(R,Math.min(p.b/2+p.i+tw,xw)).map(q=>[q[0],q[1]+yW0]);
@@ -651,13 +666,16 @@ function drawA(R){
   }
   // 槽中心線
   if(R.st){const ta=Math.tan(R.st.al), ya=yW0-p.i, yb=yW1+p.i, rh=yD=>yc-sg*(yD-yW0);
+    g+='<g class="dim" data-dim="Z">';
     for(const q of [1,-1]) g+=`<line x1="${n2(X(q*rh(ya)*ta))}" y1="${n2(Y(ya))}" x2="${n2(X(q*rh(yb)*ta))}" y2="${n2(Y(yb))}" stroke="var(--steel)" stroke-dasharray="8 3 2 3" stroke-width="1"/>`;
+    g+='</g>';
 }
   // 可用厚度上限
   if(p.tmax>0){
     const xt=p.b/2+p.i+p.tmax;
+    g+='<g class="dim" data-dim="tmax">';
     for(const sg of [1,-1]) g+=`<line x1="${n2(X(sg*xt))}" y1="${n2(Y(sh)-6)}" x2="${n2(X(sg*xt))}" y2="${n2(Y(yIns(xt))+6)}" stroke="var(--warn)" stroke-dasharray="5 4" stroke-width="1.2"/>`;
-    g+=`<text x="${n2(Math.max(X(xt),X(shH))+5)}" y="${n2(Y(sh/2)+4)}" style="fill:var(--warn)">上限</text>`;
+    g+=`<text x="${n2(Math.max(X(xt),X(shH))+5)}" y="${n2(Y(sh/2)+4)}" style="fill:var(--warn)">上限 ${f(p.tmax,2)}</text></g>`;
   }
   // 導線
   const ro=p.dout/2*s, rc=p.d/2*s;
@@ -682,9 +700,16 @@ function drawA(R){
   if(cm>0){const xm=p.b/2+p.i+cm;g+=`<line x1="${n2(X(xm))}" y1="${n2(Y(yW0)-4)}" x2="${n2(X(xm))}" y2="${n2(Y(yIns(xm))+2)}" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.1"/>`;}
   // 尺寸
   const yd=Y(Ht)+20;
-  g+=dimH(X(-p.b/2),X(p.b/2),yd,'b',Y(yYoke(p.b/2)),Y(yYoke(p.b/2)));
-  g+=dimH(X(p.b/2+p.i),X(p.b/2+p.i+t),yd+26,'t='+f(t),Y(yW1),Y(yIns(p.b/2+p.i+t)));
-  g+=dimV(X(-xw)-14,Y(yW0),Y(yW1),'h',X(-p.b/2-p.i));
+  g+=dimH(X(-p.b/2),X(p.b/2),yd,'b = '+f(p.b,2),Y(yYoke(p.b/2)),Y(yYoke(p.b/2)),'b');
+  g+=dimH(X(p.b/2+p.i),X(p.b/2+p.i+t),yd+26,'t = '+f(t),Y(yW1),Y(yIns(p.b/2+p.i+t)),'t');
+  g+=dimV(X(-xw)-14,Y(yW0),Y(yW1),'h = '+f(p.h,2),X(-p.b/2-p.i),'h');
+  // 參數引線：導線外徑、絕緣厚、剖面內角
+  {const Lo=layers[layers.length-1], yv=Lo.ys[Math.floor(Lo.ys.length/2)], xr=p.b/2+p.i+Lo.c;
+   if(yv!==undefined) g+=leader([[X(xr)+ro*.7,Y(yW0+yv)],[X(xw)+4,Y(yW0+yv)]],SUB('d','o')+' = '+f(p.dout),'dout');}
+  if(p.i>0){const xi=Math.min(p.b/2+p.i+tw,xw)-p.i*.6, yi=(yIns(xi)+yYoke(xi))/2;
+   g+=leader([[X(xi),Y(yi)],[X(xw)+4,Y(yi)+10]],'i = '+f(p.i,2),'i');}
+  if(R.rf>0){const F=[-(p.b/2+p.i+R.rf),yW0+R.yfB], q=[F[0]+R.rf*Math.SQRT1_2,F[1]+R.rf*Math.SQRT1_2];
+   g+=leader([[X(q[0]),Y(q[1])],[X(-xw)-10,Y(yW1)+12]],SUB('r','f')+' = '+f(R.rf,2),'rf','end');}
   svg.innerHTML=g;
 }
 
@@ -744,24 +769,26 @@ function drawS(R){
   g+=`<circle cx="${C}" cy="${C}" r="${n2(Rf*s)}" fill="none" stroke="var(--steel)" stroke-width=".8"/>`;
   g+=`<g fill="var(--ins)" stroke="var(--enamel)" stroke-width=".4">${insl}</g>`;
   g+=`<g>${wires}</g><g class="bad">${bad}</g>`;
-  g+=`<text x="${C}" y="${C+4}" text-anchor="middle" style="font-size:12px">Z = ${Z}</text>`;
+  g+=`<g class="dim" data-dim="Z"><text class="dimt" x="${C}" y="${C+4}" text-anchor="middle">Z = ${Z}</text></g>`;
   // 極靴圓（氣隙側）虛線、外徑尺寸、槽開口標註
   const Rp=Rsh*s, Ro=Rmax*s;
   g+=`<circle cx="${C}" cy="${C}" r="${n2(Rp)}" fill="none" stroke="var(--muted)" stroke-width=".6" stroke-dasharray="6 4"/>`;
   g=DEFS+g;
   const odReal=sg>0?SH.real:!!st.Ryf;
-  g+=dimH(C-Ro,C+Ro,C-Ro-24,(odReal?'Ø':'約 Ø')+f(2*Rmax,2),C,C);
+  g+=dimH(C-Ro,C+Ro,C-Ro-24,'外徑 '+(odReal?'Ø':'約 Ø')+f(2*Rmax,2),C,C,'Ds');
+  {const Rdi=sg>0?Rf:Rsh, idReal=sg>0?!!st.Ryf:SH.real, ri=Rdi*s;
+   g+=dimH(C-ri,C+ri,C+Ro+22,'內徑 '+(idReal?'Ø':'約 Ø')+f(2*Rdi,2),C,C,'Di');}
+  {const a=225*Math.PI/180, rr=Ry*s, ex=C+rr*Math.cos(a), ey=C-rr*Math.sin(a);
+   g+=`<g class="dim" data-dim="Ry"><line x1="${C}" y1="${C}" x2="${n2(ex)}" y2="${n2(ey)}" stroke="var(--ink)" stroke-width=".8" marker-end="url(#ar)"/><text class="dimt" x="${n2(C+rr*.5*Math.cos(a)-6)}" y="${n2(C-rr*.5*Math.sin(a)-6)}" text-anchor="end">${SUB('R','y')} ${f(Ry,2)}</text></g>`;}
   if(SH.real){
     let best=0,bd=1e9;for(let k=0;k<Z;k++){let a=(90-(st.al*180/Math.PI)*(2*k+1))%360;if(a<0)a+=360;const d=Math.abs(a-55);if(d<bd){bd=d;best=a;}}
     const ph=best*Math.PI/180, x1=C+Rp*Math.cos(ph), y1=C-Rp*Math.sin(ph);
     if(sg>0){
       const x2=C+(Rp+26)*Math.cos(ph), y2=C-(Rp+26)*Math.sin(ph);
-      g+=`<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><line x1="${n2(x2)}" y1="${n2(y2)}" x2="${n2(x2+12)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(x1)}" cy="${n2(y1)}" r="2" fill="var(--ink)"/>`;
-      g+=`<text x="${n2(x2+15)}" y="${n2(y2+4)}" style="fill:var(--ink)">b<tspan dy="3" font-size="9">so</tspan><tspan dy="-3"> ${f(st.wso,2)}</tspan></text>`;
+      g+=leader([[x1,y1],[x2,y2],[x2+12,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
     }else{
       const rr=Math.max(Rp-26,Rp*.55), x2=C+rr*Math.cos(ph), y2=C-rr*Math.sin(ph);
-      g+=`<line x1="${n2(x1)}" y1="${n2(y1)}" x2="${n2(x2)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><line x1="${n2(x2)}" y1="${n2(y2)}" x2="${n2(x2-12)}" y2="${n2(y2)}" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(x1)}" cy="${n2(y1)}" r="2" fill="var(--ink)"/>`;
-      g+=`<text x="${n2(x2-15)}" y="${n2(y2+4)}" text-anchor="end" style="fill:var(--ink)">b<tspan dy="3" font-size="9">so</tspan><tspan dy="-3"> ${f(st.wso,2)}</tspan></text>`;
+      g+=leader([[x1,y1],[x2,y2],[x2-12,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
     }
   }
   svg.innerHTML=g;
@@ -851,12 +878,12 @@ function drawConn(R){
 $('boxY').addEventListener('click',()=>$('cY').click());
 $('boxD').addEventListener('click',()=>$('cD').click());
 
-/* 頂視：每層匝路徑為等距圓角矩形 */
+/* 側視圖：每層匝路徑為等距圓角矩形 */
 function drawB(R){
   const {p,layers,t,Lp,bp,r0}=R, svg=$('svgB');
   const W=380, Xh=bp/2+t, Yh=Lp/2+t;
-  const s=Math.min((W-110)/(2*Xh),330/(2*Yh));
-  const cx=W/2+16, top=20, cy=top+Yh*s;
+  const s=Math.min((W-170)/(2*Xh),330/(2*Yh));
+  const cx=W/2+10, top=32, cy=top+Yh*s;
   const H=Math.ceil(cy+Yh*s+52);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   let g=DEFS;
@@ -870,8 +897,10 @@ function drawB(R){
   const cm=(R.mlt-R.straight)/(2*Math.PI)-r0;
   if(cm>0) g+=`<path d="${rrPath(cx,cy,(bp+2*cm)*s,(Lp+2*cm)*s,(r0+cm)*s)}" fill="none" stroke="var(--ink)" stroke-dasharray="5 4" stroke-width="1.3"/>`;
   g+=`<text x="${n2(cx)}" y="${n2(cy+4)}" text-anchor="middle" style="fill:var(--steel);font-weight:600">齒</text>`;
-  g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L',cx-p.b/2*s);
-  g+=dimH(cx-p.b/2*s,cx+p.b/2*s,cy+Yh*s+18,'b',cy+p.L/2*s,cy+p.L/2*s);
+  g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L = '+f(p.L,2),cx-p.b/2*s,'L');
+  g+=dimH(cx-p.b/2*s,cx+p.b/2*s,cy+Yh*s+18,'b = '+f(p.b,2),cy+p.L/2*s,cy+p.L/2*s,'b');
+  if(r0>0){const ccx=cx+(bp/2-r0)*s, ccy=cy-(Lp/2-r0)*s, q=[ccx+r0*s*Math.SQRT1_2,ccy-r0*s*Math.SQRT1_2];
+    g+=leader([q,[W-100,14]],SUB('r','0')+' = '+f(r0,2),'r0','start');}
   svg.innerHTML=g;
 }
 
@@ -923,8 +952,29 @@ function run(){
   }
   pinned=null;
   drawA(R);drawB(R);drawS(R);drawConn(R);renderTables(R);
+  paintHot();
 }
 document.querySelectorAll('.inputs input').forEach(el=>el.addEventListener('input',run));
+/* 參數 ↔ 圖上尺寸：游標移到或聚焦某個輸入欄時，凸顯對應的尺寸標註 */
+const DIMKEY={L:'L',b:'b',h:'h',Ry:'Ry',Z:'Z',Ds:'Ds',Di:'Di',wso:'wso',i:'i',r0:'r0',rf:'rf',tmax:'tmax',d:'dout',dout:'dout',N:'t',ns:'t',g:'t'};
+let hoverKey=null, focusKey=null;
+paintHot=function(){
+  const k=hoverKey||focusKey;
+  document.querySelectorAll('.cad').forEach(c=>{
+    const n=k?c.querySelectorAll(`.dim[data-dim="${k}"]`).length:0;
+    c.classList.toggle('dimfocus',n>0);
+    c.querySelectorAll('.dim').forEach(d=>d.classList.toggle('hot',!!k&&d.dataset.dim===k));
+  });
+  document.querySelectorAll('.inputs .f').forEach(fd=>{const inp=fd.querySelector('input');fd.classList.toggle('hot',!!k&&!!inp&&DIMKEY[inp.id]===k);});
+};
+document.querySelectorAll('.inputs .f').forEach(fd=>{
+  const inp=fd.querySelector('input'); if(!inp||!DIMKEY[inp.id]) return;
+  const k=DIMKEY[inp.id];
+  fd.addEventListener('mouseenter',()=>{hoverKey=k;paintHot();});
+  fd.addEventListener('mouseleave',()=>{hoverKey=null;paintHot();});
+  inp.addEventListener('focus',()=>{focusKey=k;paintHot();});
+  inp.addEventListener('blur',()=>{focusKey=null;paintHot();});
+});
 applyMotor();
 if(location.hash==='#inner'){motor='out';setMotor('in');} else run();
 })();
