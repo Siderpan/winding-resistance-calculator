@@ -29,6 +29,10 @@
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
 .wrap{max-width:1200px;margin:0 auto;padding-inline:16px;padding-block:20px 56px}
+nav.tools{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+nav.tools a{font-size:.85rem;color:var(--muted);text-decoration:none;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel)}
+nav.tools a[aria-current="page"]{background:var(--copper);border-color:var(--copper);color:var(--on-accent);font-weight:500}
+nav.tools a:hover:not([aria-current]){border-color:var(--muted);color:var(--ink)}
 header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 header.top h1{font-size:1.65rem;margin:0;font-weight:700;letter-spacing:.01em;text-wrap:balance}
 header.top p{margin:.3rem 0 0;color:var(--muted);max-width:62ch;font-size:.92rem}
@@ -127,6 +131,10 @@ pre.formula{font-family:var(--f-mono);font-size:.8rem;color:var(--ink);backgroun
 </head>
 <body>
 <div class="wrap">
+<nav class="tools" aria-label="工具">
+  <a href="https://siderpan.github.io/winding-resistance-calculator/" aria-current="page">繞組電阻速算</a>
+  <a href="https://siderpan.github.io/winding-resistance-calculator/mlt.html">MLT 排線計算</a>
+</nav>
 <header class="top">
   <div>
     <h1>馬達繞組電阻速算</h1>
