@@ -152,8 +152,9 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
     <h2><span class="n">2</span>絕緣</h2>
     <div class="fields">
       <div class="f"><label class="lab" for="i"><span class="tx">絕緣厚 i</span><button class="info" data-k="i" type="button">?</button><span class="u">mm</span></label><input id="i" type="number" step="0.01" min="0" value="0.3"></div>
-      <div class="f"><label class="lab" for="r0"><span class="tx">轉角半徑 r<sub>0</sub></span><button class="info" data-k="r0" type="button">?</button><span class="u">mm</span></label><input id="r0" type="number" step="0.05" min="0" value="0.5"></div>
-      <div class="f full"><label class="lab" for="tmax"><span class="tx">單邊可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm，0 = 不限</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
+      <div class="f"><label class="lab" for="r0"><span class="tx">頂視轉角 r<sub>0</sub></span><button class="info" data-k="r0" type="button">?</button><span class="u">mm</span></label><input id="r0" type="number" step="0.05" min="0" value="0.5"></div>
+      <div class="f"><label class="lab" for="rf"><span class="tx">剖面內角 R r<sub>f</sub></span><button class="info" data-k="rf" type="button">?</button><span class="u">mm</span></label><input id="rf" type="number" step="0.05" min="0" value="0.5"></div>
+      <div class="f"><label class="lab" for="tmax"><span class="tx">可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
     </div>
   </section>
 
@@ -264,8 +265,9 @@ const G={
   h:['可繞線高度','h','在齒側（緊貼齒面處）量，從極靴側絕緣面到軛部側絕緣面的距離，已扣掉兩端絕緣。\n軛部側為圓弧，離齒越遠底部越低，外層可多排幾根，本頁會依 R_y 自動計算。'],
   Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
   i:['絕緣厚','i','齒面到導線之間的絕緣單邊厚度，例如絕緣骨架壁厚、絕緣紙或粉體塗裝。四面各加一次，所以繞線的內圈是 (L+2i) × (b+2i)。'],
-  r0:['絕緣轉角半徑','r₀','絕緣外表面在四個角的圓角半徑，也就是第一層導線貼著轉彎的地方。\n粉體塗裝約等於 i；骨架依模具設計，常見 0.3～1 mm。設 0 等於直角轉彎。'],
-  tmax:['單邊可用厚度上限','t_max','線圈從絕緣面往外最多能堆多厚，通常是相鄰兩齒之間的槽寬一半，再扣掉安全間隙與繞線針嘴空間。超過時會標紅警告。設 0 表示不檢查。'],
+  rf:['剖面內角 R','r_f','絕緣骨架在齒側壁與上、下擋板（極靴側、軛部側）交接處的內圓角，如剖面圖上齒根與齒頂的四個角。\n圓角會佔掉角落的位置：導線中心距圓角圓心須 ≤ r_f − d_o/2，落在圓角內的排線位置會被略過。\n設 0 為直角。'],
+  r0:['頂視轉角半徑','r₀','絕緣外表面在四個角的圓角半徑，也就是第一層導線貼著轉彎的地方。\n粉體塗裝約等於 i；骨架依模具設計，常見 0.3～1 mm。設 0 等於直角轉彎。'],
+  tmax:['可用厚度上限','t_max','單邊。線圈從絕緣面往外最多能堆多厚，通常是相鄰兩齒之間的槽寬一半，再扣掉安全間隙與繞線針嘴空間。超過時會標紅警告。設 0 表示不檢查。'],
   d:['裸銅線徑','d','導體直徑，用來算銅截面積與電阻。'],
   dout:['完成外徑','d_o','含漆膜的漆包線外徑，用來排線與算線圈厚度。請填線材規格書的最大外徑；IEC 60317 Grade 1/2 的漆膜增量依線徑不同，0.35 mm Grade 2 約 0.39～0.40 mm。'],
   N:['每線圈匝數','N','單一線圈繞幾圈。並繞時多股一起算一匝。'],
@@ -313,7 +315,7 @@ const f=(x,dg=3)=>!isFinite(x)?'—':Math.abs(x)>=1000?x.toFixed(0):Math.abs(x)>
 
 /* ---------- core computation ---------- */
 function compute(){
-  const p={L:v('L'),b:v('b'),h:v('h'),i:Math.max(0,v('i')||0),r0:Math.max(0,v('r0')||0),tmax:Math.max(0,v('tmax')||0),
+  const p={L:v('L'),b:v('b'),h:v('h'),i:Math.max(0,v('i')||0),rf:Math.max(0,v('rf')||0),r0:Math.max(0,v('r0')||0),tmax:Math.max(0,v('tmax')||0),
     d:v('d'),dout:v('dout'),N:Math.max(1,Math.round(v('N')||1)),ns:Math.max(1,Math.round(v('ns')||1)),g:Math.max(1,v('g')||1),
     cpp:Math.max(1,Math.round(v('cpp')||1)),a:Math.max(1,Math.round(v('a')||1)),lead:Math.max(0,v('lead')||0),rho:v('rho'),Tref:v('Tref'),Top:v('Top')};
   const R={p,msgs:[]};
@@ -332,9 +334,15 @@ function compute(){
   }
   const ysI=x=>Ry>0?((Ry+p.i)>x?yc-Math.sqrt((Ry+p.i)**2-x*x):yc):p.h;   // 絕緣內表面（窗口底）
   const yMax=x=>{if(Ry<=0)return p.h-rw;const D=(Ry+p.i+rw)**2-x*x;return D>0?Math.min(yc,yc-Math.sqrt(D)):yc;};
-  const capAt=(c,shift)=>Math.floor((yMax(x0+c)-rw-shift)/pa+1e-9)+1;
-  const n0=capAt(rw,0);
-  if(n0<1){R.err='可繞線高度 h 小於導線外徑，一根都排不下。';return R;}
+  // 剖面內角：上角圓心 (x0+rf, rf)；下角圓心與齒側面、軛部側圓弧同時相切
+  const rf=p.rf;
+  const yfB=Ry>0?yc-Math.sqrt(Math.max(0,(Ry+p.i+rf)**2-(x0+rf)**2)):p.h-rf;
+  const yTop=xc=>{const dx=x0+rf-xc;return (rf>rw&&dx>0)?Math.max(rw,rf-Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx))):rw;};
+  const yBot=xc=>{let m=yMax(xc);const dx=x0+rf-xc;if(rf>rw&&dx>0)m=Math.min(m,yfB+Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx)));return m;};
+  const posAt=(c,shift)=>{const xc=x0+c,lo=yTop(xc)-1e-9,hi=yBot(xc)+1e-9,a=[];
+    for(let j=0;j<5000;j++){const y=rw+shift+j*pa;if(y>hi)break;if(y>=lo)a.push(y);}return a;};
+  const n0=posAt(rw,0).length;
+  if(n0<1){R.err='第一層排不下任何導線：可繞線高度 h 太小，或剖面內角 R 太大。';return R;}
   let mode=pat;
   if(mode==='or'&&n0<2){mode='sq';R.msgs.push(['','第一層只能排 1 根，正交嵌入無法成立，已改用整齊方格計算。']);}
   const pr=(mode==='or'?Math.sqrt(3)/2:1)*pa;
@@ -343,9 +351,9 @@ function compute(){
   while(left>0&&k<500){
     const odd=mode==='or'&&k%2===1, shift=odd?pa/2:0;
     const c=rw+k*pr;
-    const cap=Math.max(0,capAt(c,shift)), n=Math.min(cap,left);
+    const ys=posAt(c,shift), cap=ys.length, n=Math.min(cap,left);
     const len=straight+2*Math.PI*(r0+c);
-    layers.push({k,n,cap,c,len,shift,start:total-left});
+    layers.push({k,n,cap,c,len,shift,ys:ys.slice(0,n),start:total-left});
     left-=n;k++;
   }
   if(left>0){R.err='超過 500 層，請檢查匝數、線徑與可繞線高度。';return R;}
@@ -360,10 +368,10 @@ function compute(){
   const Rlead=p.rho*(p.lead/1000)/(A*p.ns);
   const Rph20=(Rcoil*p.cpp/p.a+Rlead)/p.a;
   const kLL=conn==='Y'?2:2/3;
-  let win=0;{const m=60,dx=t/m;for(let j=0;j<m;j++)win+=ysI(x0+(j+.5)*dx)*dx;}
+  let win=0;{const m=60,dx=t/m;for(let j=0;j<m;j++)win+=ysI(x0+(j+.5)*dx)*dx;win-=2*Math.min(rf,t)**2*(1-Math.PI/4);}
   const fill=total*A/win;
   const caps=layers.map(L=>L.cap), capMin=Math.min(...caps), capMax=Math.max(...caps);
-  Object.assign(R,{Lp,bp,r0,pa,pr,n0,mode,Ry,yc,x0,ysI,yMax,capMin,capMax,win,straight,layers,sum,strand,mlt,t,mltF,A,Rcoil,Rph20,kLL,fill,
+  Object.assign(R,{Lp,bp,r0,pa,pr,n0,mode,Ry,yc,x0,ysI,yMax,rf,yfB,capMin,capMax,win,straight,layers,sum,strand,mlt,t,mltF,A,Rcoil,Rph20,kLL,fill,
     phaseLen:(strand*p.cpp+p.lead*p.a)/1000});
   if(p.cpp%p.a!==0) R.msgs.push(['warn','每相線圈數必須能被並聯路數整除。']);
   if(Ry>0&&x0+t>.75*Ry) R.msgs.push(['warn','線圈外緣已接近軛部圓弧的側邊，實際上會碰到相鄰齒的線圈或槽底，請確認 R_y 與槽形。']);
@@ -427,7 +435,17 @@ function drawA(R){
   // 絕緣：極靴側平面、齒側直條、軛部側沿圓弧（厚度 i）
   if(p.i>0){
     const xa=p.b/2, xb=p.b/2+p.i, xo=Math.min(p.b/2+p.i+tw,xw);
-    const half=[[xa,sh],[xo,sh],[xo,sh+p.i],[xb,sh+p.i],...arc(yIns,xb,xo),...arc(yYoke,xo,xa)];
+    const rf=R.rf, fil=(cxp,cyp,a0,a1)=>{const o=[];for(let j=0;j<=16;j++){const a=a0+(a1-a0)*j/16;o.push([cxp+rf*Math.cos(a),cyp+rf*Math.sin(a)]);}return o;};
+    let topC=[[xb,sh+p.i]], botC=[[xb,yW1]], xT=xb;
+    if(rf>0){
+      topC=fil(xb+rf,sh+p.i+rf,-Math.PI/2,-Math.PI);
+      const Fy=yW0+R.yfB, Fx=xb+rf;
+      let aT=Math.PI/2;
+      if(!flat){aT=Math.atan2(ycD-Fy,0-Fx);}
+      botC=fil(Fx,Fy,Math.PI,aT);
+      xT=botC[botC.length-1][0];
+    }
+    const half=[[xa,sh],[xo,sh],[xo,sh+p.i],...topC,...botC,...arc(yIns,xT,xo),...arc(yYoke,xo,xa)];
     for(const sg of [1,-1]) g+=`<path d="${poly(half.map(q=>[sg*q[0],q[1]]))}" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6" stroke-linejoin="round"/>`;
   }
   // 可用厚度上限
@@ -443,8 +461,8 @@ function drawA(R){
   for(const L of layers){
     const col=L.k%2?'var(--copper-2)':'var(--copper)';
     let w='';
-    for(let j=0;j<L.n;j++){
-      const yy=Y(yW0+p.dout/2+L.shift+j*pa);
+    for(const yv of L.ys){
+      const yy=Y(yW0+yv);
       for(const sg of [1,-1]){
         const xx=X(sg*(p.b/2+p.i+L.c));
         w+=simple?`<circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(Math.max(ro,.6))}" fill="${col}"/>`
