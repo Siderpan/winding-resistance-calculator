@@ -138,6 +138,33 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 #pop .eq{font-family:var(--f-mono);font-size:.8rem;line-height:1.7;background:var(--sunk);border-radius:4px;padding:6px 8px;margin:4px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 #pop .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:4px}
 @media (prefers-reduced-motion:no-preference){#pop{animation:pin .14s ease-out}@keyframes pin{from{opacity:0;transform:translateY(4px)}}}
+
+/* readability */
+body{font-size:16px}
+.lab{font-size:.88rem}
+.lab .u{font-size:.76rem}
+input,select{font-size:1rem;padding:8px 10px}
+.step h2{font-size:1.05rem}
+.card h3,.view h3,h2.ch{font-size:1.08rem;font-weight:700;margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.view h3 span,h2.ch small{font-weight:400;font-size:.8rem;color:var(--muted)}
+.right{gap:20px}
+.card{padding:18px 20px}
+.card.kpis{padding:0}
+.k{font-size:.92rem}
+.k td{padding:7px 0}
+.k caption{text-align:left;font-size:.78rem;letter-spacing:.06em;color:var(--copper);font-weight:500;padding-bottom:4px}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 28px}
+@media (max-width:900px){.dgrid{grid-template-columns:minmax(0,1fr)}}
+#msgs{margin-top:14px}
+#msgs:empty{display:none}
+.cols.one{grid-template-columns:minmax(0,1fr)}
+.lt{font-size:.86rem}
+.cbox svg{max-width:210px}
+.legend{font-size:.8rem;margin-top:12px}
+.cad text{font-size:13px}
+.cad .dimt{font-size:14px}
+.lt th,.lt td{white-space:nowrap}
+@media (min-width:961px){.inputs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow-y:auto;padding-right:4px;scrollbar-width:thin}}
 </style>
 </head>
 <body>
@@ -145,7 +172,6 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 <header class="top">
   <div>
     <h1>電阻計算</h1>
-    <p>輸入齒部尺寸、絕緣與導線規格，下方即時畫出每一層導線的實際排列位置，逐層累加線長求出平均匝長 MLT 與電阻。預設值為 12 槽集中繞風扇馬達範例。</p>
   </div>
   <div class="theme" role="group" aria-label="頁面明暗">
     <button type="button" data-t="light" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>淺色</button>
@@ -217,11 +243,11 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
   <div class="card">
     <div class="views">
       <div class="view">
-        <h3>剖面 A–A<span>垂直於疊厚方向切開齒部</span></h3>
+        <h3>剖面 A–A</h3>
         <div class="cad" id="cadA"><svg id="svgA" viewBox="0 0 560 420" role="img" aria-label="齒部剖面與導線排列"></svg></div>
       </div>
       <div class="view">
-        <h3>頂視<span>從齒頂沿齒向下看</span></h3>
+        <h3>頂視</h3>
         <div class="cad" id="cadB"><svg id="svgB" viewBox="0 0 380 420" role="img" aria-label="各層匝路徑頂視"></svg></div>
       </div>
     </div>
@@ -234,37 +260,17 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
       <span><i style="background:transparent;border:1.5px dashed var(--steel)"></i>槽中心線</span>
       <span><i style="background:var(--warn);border-radius:50%"></i>越過槽中心線的導線</span>
     </div>
-    <p class="note">游標移到下方逐層表的任一列，兩張圖會凸顯該層位置。</p>
   </div>
 
   <div class="card">
-    <div class="view">
-      <h3>接線電路<span>每相以一個電阻 R<sub>ph</sub> 表示，點選可切換接線方式</span></h3>
-      <div class="conn">
-        <button type="button" class="cbox" id="boxY" aria-pressed="true"><div class="ctitle">Y 星形<span>U–V 串兩相</span></div><svg id="svgY" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvY"></div></button>
-        <button type="button" class="cbox" id="boxD" aria-pressed="false"><div class="ctitle">Δ 三角形<span>R<sub>ph</sub> 與 2R<sub>ph</sub> 並聯</span></div><svg id="svgD" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvD"></div></button>
-      </div>
-    </div>
+    <h2 class="ch">計算明細</h2>
+    <div class="dgrid" id="detail"></div>
+    <ul class="msgs" id="msgs"></ul>
   </div>
 
-  <div class="card" id="statorCard">
-    <div class="view">
-      <h3>定子全圖<span id="sSub">各齒線圈與槽內佔用情形</span></h3>
-      <div class="stator">
-        <div class="cad"><svg id="svgS" viewBox="0 0 520 520" role="img" aria-label="定子全圖與各槽排線"></svg></div>
-        <div><table class="k" id="sTbl"></table><ul class="msgs" id="sMsgs" style="margin-top:12px"></ul></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="cols">
+  <div class="cols one">
     <div class="card">
-      <h3>計算明細</h3>
-      <table class="k" id="detail"></table>
-      <ul class="msgs" id="msgs" style="margin-top:12px"></ul>
-    </div>
-    <div class="card">
-      <h3>逐層線長</h3>
+      <h2 class="ch">逐層線長</h2>
       <div class="tblwrap"><table class="lt" id="lt"></table></div>
       <details style="margin-top:12px">
         <summary>計算式</summary>
@@ -282,6 +288,27 @@ R(T) = R₂₀ · (234.5+T)/254.5</pre>
       </details>
     </div>
   </div>
+
+  <div class="card">
+    <div class="view">
+      <h3>接線電路</h3>
+      <div class="conn">
+        <button type="button" class="cbox" id="boxY" aria-pressed="true"><div class="ctitle">Y 星形</div><svg id="svgY" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvY"></div></button>
+        <button type="button" class="cbox" id="boxD" aria-pressed="false"><div class="ctitle">Δ 三角形</div><svg id="svgD" viewBox="0 0 260 230" aria-hidden="true"></svg><div class="cval" id="cvD"></div></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="statorCard">
+    <div class="view">
+      <h3>定子全圖<span id="sSub"></span></h3>
+      <div class="stator">
+        <div class="cad"><svg id="svgS" viewBox="0 0 520 520" role="img" aria-label="定子全圖與各槽排線"></svg></div>
+        <div><table class="k" id="sTbl"></table><ul class="msgs" id="sMsgs" style="margin-top:12px"></ul></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 </div>
 </div>
@@ -715,21 +742,11 @@ function renderTables(R){
   $('kLen').innerHTML=f(R.strand/1000,3)+' <small>m'+(p.ns>1?' × '+p.ns+' 股':'')+'</small>';
   const diff=(R.mltF/R.mlt-1)*100;
   const fillChip=R.fill<.5?'<span class="chip ok">寬鬆</span>':R.fill<.7?'<span class="chip mid">一般</span>':'<span class="chip warn">偏高</span>';
-  $('detail').innerHTML=`
-    <tr class="grp"><td colspan="2">排線結果</td></tr>
-    <tr><td>層數</td><td>${R.layers.length} 層</td></tr>
-    <tr><td>每層可排根數</td><td>${R.capMin===R.capMax?R.capMin:R.capMin+'～'+R.capMax}</td></tr>
-    <tr><td>線圈厚度 t（單邊）</td><td>${f(R.t)} mm</td></tr>
-    <tr><td>繞線窗口佔積率</td><td>${(R.fill*100).toFixed(1)} %${fillChip}</td></tr>
-    <tr class="grp"><td colspan="2">匝長</td></tr>
-    <tr><td>MLT（逐層排線）</td><td>${f(R.mlt,2)} mm</td></tr>
-    <tr><td>MLT（簡化公式，直角）</td><td>${f(R.mltF,2)} mm</td></tr>
-    <tr><td>簡化公式偏差</td><td>${(diff>=0?'+':'')+diff.toFixed(1)} %</td></tr>
-    <tr><td>每相線長</td><td>${f(R.phaseLen,2)} m</td></tr>
-    <tr class="grp"><td colspan="2">電阻 @ 20 °C</td></tr>
-    <tr><td>單一線圈 R<sub>coil</sub></td><td>${f(R.Rcoil)} Ω</td></tr>
-    <tr><td>每相 R<sub>ph</sub></td><td>${f(R.Rph20)} Ω</td></tr>
-    <tr><td>端子間 R<sub>LL</sub>（${conn==='Y'?'Y':'Δ'}）</td><td>${f(R.Rph20*R.kLL)} Ω</td></tr>`;
+  const grp=(t,rows)=>`<table class="k"><caption>${t}</caption>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`;
+  $('detail').innerHTML=
+    grp('排線結果',[['層數',R.layers.length+' 層'],['每層可排根數',R.capMin===R.capMax?R.capMin:R.capMin+'～'+R.capMax],['線圈厚度 t（單邊）',f(R.t)+' mm'],['繞線窗口佔積率',(R.fill*100).toFixed(1)+' %'+fillChip]])+
+    grp('匝長',[['MLT（逐層排線）',f(R.mlt,2)+' mm'],['MLT（簡化公式）',f(R.mltF,2)+' mm'],['簡化公式偏差',(diff>=0?'+':'')+diff.toFixed(1)+' %'],['每相線長',f(R.phaseLen,2)+' m']])+
+    grp('電阻 @ 20 °C',[['單一線圈 R<sub>coil</sub>',f(R.Rcoil)+' Ω'],['每相 R<sub>ph</sub>',f(R.Rph20)+' Ω'],['端子間 R<sub>LL</sub>（'+(conn==='Y'?'Y':'Δ')+'）',f(R.Rph20*R.kLL)+' Ω']]);
   $('msgs').innerHTML=R.msgs.map(m=>`<li class="${m[0]}">${m[1]}</li>`).join('');
   let h='<thead><tr><th>層</th><th>根數</th><th>c (mm)</th><th>每匝長 (mm)</th><th>本層線長 (mm)</th><th>累計匝</th></tr></thead><tbody>';
   let cum=0;
