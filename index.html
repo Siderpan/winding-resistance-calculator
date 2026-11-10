@@ -192,6 +192,7 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="Ry"><span class="tx">軛部外圓半徑 R<sub>y</sub></span><button class="info" data-k="Ry" type="button">?</button><span class="u">mm</span></label><input id="Ry" type="number" step="0.5" min="0" value="16"></div>
       <div class="f"><label class="lab" for="Z"><span class="tx">槽數 Z</span><button class="info" data-k="Z" type="button">?</button><span class="u">槽</span></label><input id="Z" type="number" step="1" min="0" value="12"></div>
       <div class="f"><label class="lab" for="Ds"><span class="tx">定子外徑 D<sub>s</sub></span><button class="info" data-k="Ds" type="button">?</button><span class="u">mm</span></label><input id="Ds" type="number" step="0.5" min="0" value="47"></div>
+      <div class="f"><label class="lab" for="Di"><span class="tx">定子內徑 D<sub>i</sub></span><button class="info" data-k="Di" type="button">?</button><span class="u">mm</span></label><input id="Di" type="number" step="0.5" min="0" value="26"></div>
       <div class="f"><label class="lab" for="wso"><span class="tx">槽開口寬度 b<sub>so</sub></span><button class="info" data-k="wso" type="button">?</button><span class="u">mm</span></label><input id="wso" type="number" step="0.1" min="0" value="2"></div>
     </div>
   </section>
@@ -336,6 +337,7 @@ const G={
   b:['齒寬','b','繞線那顆齒的寬度（切線方向）。'],
   h:['可繞線高度','h','在齒側（緊貼齒面處）量，從極靴側絕緣面到軛部側絕緣面的距離，已扣掉兩端絕緣。\n軛部側為圓弧，離齒越遠底部越低，外層可多排幾根，本頁會依 R_y 自動計算。'],
   Ds:['定子外徑','D_s','極靴外緣所在圓的直徑。外轉子馬達中就是定子最大外徑，面對氣隙與磁鐵。決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
+  Di:['定子內徑','D_i','軛部內側（中心孔）的直徑。軛部厚度 = (2R_y − D_i) ÷ 2。\n填 0 時軛部以示意厚度繪製。'],
   wso:['槽開口寬度','b_so','相鄰兩極靴尖端之間的開口寬度，繞線針嘴與導線由此進入槽內。本頁以平行於槽中心線的開口繪製。\n開口越窄，齒槽轉矩通常越小，但繞線越困難。'],
   Z:['槽數','Z','定子的槽數，等於齒數。用來畫定子全圖、算槽面積與槽滿率，並檢查相鄰兩齒的線圈在槽中央是否互相干涉。\n需同時設定軛部外圓半徑 R_y。填 0 不檢查。'],
   Ry:['軛部外圓半徑','R_y','定子中心到軛部外圓（齒根所在圓）的半徑。軛部側的絕緣與繞線窗口底部沿這個圓弧走，半徑越小，外層多出的空間越多。\n填 0 視為平底。'],
@@ -472,6 +474,11 @@ function compute(){
     st.fillCu=2*total*A/st.aSlot;
     st.fillOd=2*total*(Math.PI/4*p.dout*p.dout)/st.aNet;
     R.st=st;
+    const Di=Math.max(0,v('Di')||0);
+    if(Di>0){
+      if(Di>=2*Ry) R.msgs.push(['warn',`定子內徑 ${f(Di,2)} mm 必須小於軛部外圓直徑 ${f(2*Ry,2)} mm。`]);
+      else st.Ri=Di/2;
+    }
     const Ds=Math.max(0,v('Ds')||0), wso=Math.max(0,v('wso')||0);
     if(Ds>0){
       const Rso=Ds/2, rhoU=yc+p.i, hh=wso/2;
@@ -559,7 +566,7 @@ function drawA(R){
   const tw=Math.max(t,p.tmax||0)+p.dout*.4;
   const SH=shoePts(R,tw);
   const sh=-Math.min(...SH.pts.map(q=>q[1]))-p.i;
-  let yk=Math.max(p.h*.22,p.dout*3); if(!flat) yk=Math.min(yk,Ry*.35);
+  let yk=Math.max(p.h*.22,p.dout*3); if(!flat) yk=Math.min(yk,Ry*.35,R.st&&R.st.Ri?Ry-R.st.Ri:Infinity);
   let xw=Math.max(p.b/2+p.i+tw,SH.half)+p.dout; if(!flat) xw=Math.min(xw,.97*(Ry-yk));
   const yW0=sh+p.i, yW1=yW0+p.h, ycD=flat?0:yW0+yc;
   const sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
@@ -642,7 +649,7 @@ function drawS(R){
   const W=520, C=W/2;
   const tw=Math.max(t,p.tmax||0)+p.dout*.4;
   const SH=shoePts(R,tw);
-  const yk=Math.min(Math.max(p.h*.22,p.dout*3),Ry*.35);
+  const yk=st.Ri?Ry-st.Ri:Math.min(Math.max(p.h*.22,p.dout*3),Ry*.35);
   const Rso=SH.real?st.Rso:yc-Math.min(...SH.pts.map(q=>q[1]));
   const s=(C-60)/Rso;
   const sq=(r,x)=>Math.sqrt(Math.max(0,r*r-x*x));
@@ -657,11 +664,18 @@ function drawS(R){
   let g='';
   // 軛部環
   const rIn=(Ry-yk)*s, rOut=Ry*s;
-  g+=`<path d="M${C-rOut} ${C}a${rOut} ${rOut} 0 1 0 ${2*rOut} 0a${rOut} ${rOut} 0 1 0 ${-2*rOut} 0ZM${C-rIn} ${C}a${rIn} ${rIn} 0 1 1 ${2*rIn} 0a${rIn} ${rIn} 0 1 1 ${-2*rIn} 0Z" fill="var(--steel-fill)" fill-rule="evenodd" stroke="var(--steel)" stroke-width=".8"/>`;
+  g+=`<path d="M${C-rOut} ${C}a${rOut} ${rOut} 0 1 0 ${2*rOut} 0a${rOut} ${rOut} 0 1 0 ${-2*rOut} 0ZM${C-rIn} ${C}a${rIn} ${rIn} 0 1 1 ${2*rIn} 0a${rIn} ${rIn} 0 1 1 ${-2*rIn} 0Z" fill="var(--steel-fill)" fill-rule="evenodd" stroke="none"/>`;
+  // 外形輪廓：齒側＋極靴（開放路徑）＋齒間軛部圓弧＋內徑圓
+  const dl=Math.asin(Math.min(1,p.b/2/Ry));
+  const openTooth=[[-p.b/2,yo(-p.b/2)],...SH.pts,[p.b/2,yo(p.b/2)]];
+  let outline='';
   let teeth='',insl='',wires='',bad='';
   for(let k=0;k<Z;k++){
     const th=Math.PI/2+k*2*st.al;
     teeth+=`<path d="${path(th,toothPts)}"/>`;
+    outline+=path(th,openTooth).slice(0,-1);
+    {const a1=th+dl, a2=th+2*st.al-dl;
+     outline+=`M${n2(C+rOut*Math.cos(a1))} ${n2(C-rOut*Math.sin(a1))}A${n2(rOut)} ${n2(rOut)} 0 0 0 ${n2(C+rOut*Math.cos(a2))} ${n2(C-rOut*Math.sin(a2))}`;}
     if(p.i>0) for(const sg of [1,-1]) insl+=`<path d="${path(th,ins.map(q=>[sg*q[0],q[1]]))}"/>`;
     for(const L of layers){
       const col=L.k%2?'var(--copper-2)':'var(--copper)';
@@ -670,8 +684,9 @@ function drawS(R){
         if(L.bad&&L.bad[jj]) bad+=c+'/>'; else wires+=c+` fill="${col}"/>`;}});
     }
   }
-  g+=`<g fill="var(--steel-fill)" stroke="var(--steel)" stroke-width=".8" stroke-linejoin="round">${teeth}</g>`;
-  g+=`<circle cx="${C}" cy="${C}" r="${n2(Ry*s)}" fill="none" stroke="var(--steel)" stroke-width=".8" stroke-dasharray="1 0"/>`;
+  g+=`<g fill="var(--steel-fill)" stroke="none">${teeth}</g>`;
+  g+=`<path d="${outline}" fill="none" stroke="var(--steel)" stroke-width=".8" stroke-linejoin="round"/>`;
+  g+=`<circle cx="${C}" cy="${C}" r="${n2(rIn)}" fill="none" stroke="var(--steel)" stroke-width=".8"/>`;
   g+=`<g fill="var(--ins)" stroke="var(--enamel)" stroke-width=".4">${insl}</g>`;
   g+=`<g>${wires}</g><g class="bad">${bad}</g>`;
   g+=`<text x="${C}" y="${C+4}" text-anchor="middle" style="font-size:12px">Z = ${Z}</text>`;
@@ -696,6 +711,8 @@ function drawS(R){
     <tr class="grp"><td colspan="2">定子</td></tr>
     <tr><td>定子外徑</td><td>${SH.real?f(2*st.Rso,2)+' mm':'未設定'}</td></tr>
     <tr><td>軛部外圓直徑</td><td>${f(2*Ry,2)} mm</td></tr>
+    <tr><td>定子內徑</td><td>${st.Ri?f(2*st.Ri,2)+' mm':'未設定'}</td></tr>
+    <tr><td>軛部厚度</td><td>${st.Ri?f(Ry-st.Ri,2)+' mm':'—'}</td></tr>
     ${SH.real?`<tr><td>槽開口寬度</td><td>${f(st.wso,2)} mm</td></tr>
     <tr><td>極靴厚度（中央／尖端）</td><td>${f(st.shoe.thkC,2)}／${f(st.shoe.thkT,2)} mm</td></tr>`:''}
     <tr class="grp"><td colspan="2">每槽</td></tr>
