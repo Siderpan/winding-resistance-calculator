@@ -148,6 +148,19 @@ pre.formula{font-family:var(--f-mono);font-size:.78rem;background:var(--sunk);pa
 .cad .dim.hot text,.cad .dim.hot tspan{fill:var(--copper)!important}
 .f.hot .lab .tx{color:var(--copper)}
 .f.hot input{border-color:var(--copper)}
+/* presets */
+.preset h2 small{font-weight:400;font-size:.78rem;color:var(--muted);margin-left:auto}
+.prow{display:flex;gap:8px;margin-top:8px;min-width:0}
+.prow select{flex:1;min-width:0;font:inherit;font-size:.9rem;padding:7px 8px;border:1px solid var(--line);border-radius:5px;background:var(--sunk);color:var(--ink)}
+.prow input[type=text]{flex:1;min-width:0;font-family:var(--f-body)}
+.btn{font:inherit;font-size:.85rem;padding:7px 12px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.pri{background:var(--copper);color:var(--on-accent);border-color:var(--copper);font-weight:500}
+.btn.danger{border-color:var(--warn);color:var(--warn)}
+.prow .btn:not(.pri){flex:0 0 auto}
+.prow:last-of-type .btn{flex:1}
+.pmsg{margin:8px 0 0;font-size:.8rem;color:var(--muted);min-height:1.2em}
+.pmsg.ok{color:var(--ok)} .pmsg.warn{color:var(--warn)}
 /* motor tabs */
 .mtabs{display:flex;gap:0;border-bottom:1px solid var(--line);margin-bottom:18px}
 .mtabs button{font:inherit;font-size:.98rem;font-weight:500;background:transparent;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:10px 18px 9px;cursor:pointer;margin-bottom:-1px}
@@ -201,6 +214,13 @@ input,select{font-size:1rem;padding:8px 10px}
 
 <div class="grid">
 <div class="inputs">
+  <section class="step preset" aria-labelledby="hp">
+    <h2 id="hp">馬達參數組<small id="pMode">外轉式</small></h2>
+    <div class="prow"><select id="pSel" aria-label="已儲存的參數組"><option value="">選擇已儲存的參數組</option></select><button type="button" class="btn" id="pDel">刪除</button></div>
+    <div class="prow"><input id="pName" type="text" maxlength="60" placeholder="名稱，例如 FAN-12S-v2" aria-label="參數組名稱"><button type="button" class="btn pri" id="pSave">儲存</button></div>
+    <div class="prow"><button type="button" class="btn" id="pExp">匯出 JSON</button><button type="button" class="btn" id="pImpBtn">匯入 JSON</button><input id="pImp" type="file" accept=".json,application/json" hidden></div>
+    <p class="pmsg" id="pMsg" role="status"></p>
+  </section>
   <section class="step">
     <h2><span class="n">1</span>定子齒部</h2>
     <div class="fields">
@@ -416,7 +436,7 @@ const GM={
     Di:['定子內徑','D_i','定子孔徑，也就是極靴內緣所在圓的直徑，面對氣隙與轉子磁鐵，決定極靴厚度。\n填 0 時極靴以示意尺寸繪製。'],
     lblRy:'軛部內圓半徑 R<sub>y</sub>'}
 };
-const IN_IDS=[...document.querySelectorAll('.inputs input')].map(el=>el.id);
+const IN_IDS=[...document.querySelectorAll('.inputs input[type="number"]')].map(el=>el.id);
 const VALS={out:Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),
   in:Object.assign(Object.fromEntries(IN_IDS.map(id=>[id,$(id).value])),{L:'15',b:'4',h:'7.8',Ry:'25',Z:'12',Ds:'60',Di:'30',wso:'2'})};
 function applyMotor(){
@@ -433,6 +453,7 @@ function setMotor(m){
   for(const id of IN_IDS) $(id).value=VALS[m][id];
   applyMotor();
   try{history.replaceState(null,'',m==='in'?'#inner':'#outer');}catch(e){}
+  if(typeof fillSel==='function'){fillSel('');$('pName').value='';pmsg('');}
   run();
 }
 $('tabOut').addEventListener('click',()=>setMotor('out'));
@@ -954,7 +975,85 @@ function run(){
   drawA(R);drawB(R);drawS(R);drawConn(R);renderTables(R);
   paintHot();
 }
-document.querySelectorAll('.inputs input').forEach(el=>el.addEventListener('input',run));
+document.querySelectorAll('.inputs input[type="number"]').forEach(el=>{el.addEventListener('input',run);el.addEventListener('focus',()=>{try{el.select();}catch(e){}});});
+/* Tab 直接在輸入欄之間移動：說明鈕與切換鈕不進入 Tab 順序（仍可用滑鼠點選） */
+document.querySelectorAll('.inputs .info, .inputs .seg button').forEach(b=>b.setAttribute('tabindex','-1'));
+
+/* ---------- 馬達參數組：儲存於本機瀏覽器，可匯出／匯入 JSON ---------- */
+const PKEY='wr-presets';
+const loadP=()=>{try{const d=JSON.parse(localStorage.getItem(PKEY));if(d&&typeof d==='object')return {out:d.out||[],in:d.in||[]};}catch(e){}return {out:[],in:[]};};
+const saveP=d=>{try{localStorage.setItem(PKEY,JSON.stringify(d));return true;}catch(e){return false;}};
+const curVals=()=>Object.fromEntries(IN_IDS.map(id=>[id,$(id).value]));
+const pmsg=(t,c)=>{const m=$('pMsg');m.textContent=t;m.className='pmsg'+(c?' '+c:'');};
+function fillSel(sel){
+  const list=loadP()[motor].slice().sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
+  $('pSel').innerHTML='<option value="">'+(list.length?'選擇已儲存的參數組':'尚未儲存任何參數組')+'</option>'+list.map(e=>`<option value="${esc(e.name)}">${esc(e.name)}</option>`).join('');
+  $('pSel').value=sel||'';
+  $('pMode').textContent=(motor==='out'?'外轉式':'內轉式')+' · '+list.length+' 組';
+}
+function applySet(e){
+  for(const id of IN_IDS) if(e.vals&&e.vals[id]!=null) $(id).value=e.vals[id];
+  if(e.pat) $(e.pat==='or'?'pOr':'pSq').click();
+  if(e.conn) $(e.conn==='D'?'cD':'cY').click();
+  run();
+}
+$('pSave').addEventListener('click',()=>{
+  const name=$('pName').value.trim();
+  if(!name){pmsg('請先輸入名稱。','warn');$('pName').focus();return;}
+  const d=loadP(), arr=d[motor], i=arr.findIndex(e=>e.name===name);
+  const ent={name,motor,savedAt:new Date().toISOString(),vals:curVals(),pat,conn};
+  if(i>=0) arr[i]=ent; else arr.push(ent);
+  if(!saveP(d)){pmsg('這個瀏覽器不允許儲存，請改用「匯出 JSON」保存。','warn');return;}
+  fillSel(name); pmsg((i>=0?'已更新':'已儲存')+`「${name}」。`,'ok');
+});
+$('pSel').addEventListener('change',()=>{
+  const name=$('pSel').value; if(!name) return;
+  const e=loadP()[motor].find(x=>x.name===name); if(!e) return;
+  applySet(e); $('pName').value=name; pmsg(`已載入「${name}」。`,'ok');
+});
+let delArm=null;
+$('pDel').addEventListener('click',()=>{
+  const name=$('pSel').value, b=$('pDel');
+  if(!name){pmsg('請先從清單選擇要刪除的參數組。','warn');return;}
+  if(delArm!==name){delArm=name;b.textContent='確定刪除？';b.classList.add('danger');
+    setTimeout(()=>{if(delArm===name){delArm=null;b.textContent='刪除';b.classList.remove('danger');}},3000);return;}
+  const d=loadP(); d[motor]=d[motor].filter(e=>e.name!==name); saveP(d);
+  delArm=null;b.textContent='刪除';b.classList.remove('danger');
+  fillSel(''); pmsg(`已刪除「${name}」。`,'ok');
+});
+$('pExp').addEventListener('click',()=>{
+  const name=$('pName').value.trim()||$('pSel').value||'未命名';
+  const ent={type:'winding-resistance-preset',version:1,name,motor,savedAt:new Date().toISOString(),vals:curVals(),pat,conn};
+  try{
+    const url=URL.createObjectURL(new Blob([JSON.stringify(ent,null,2)],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download=name.replace(/[\\/:*?"<>|]+/g,'_')+'.json';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    pmsg(`已匯出「${name}」目前的參數。`,'ok');
+  }catch(e){pmsg('匯出失敗：瀏覽器不允許下載檔案。','warn');}
+});
+$('pImpBtn').addEventListener('click',()=>$('pImp').click());
+$('pImp').addEventListener('change',()=>{
+  const file=$('pImp').files[0]; if(!file) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const raw=JSON.parse(rd.result), list=Array.isArray(raw)?raw:[raw];
+      const ok=list.filter(e=>e&&typeof e.vals==='object'&&(e.motor==='out'||e.motor==='in'));
+      if(!ok.length) throw 0;
+      const d=loadP();
+      for(const e of ok){const nm=String(e.name||file.name.replace(/\.json$/i,'')).slice(0,60);
+        const ent={name:nm,motor:e.motor,savedAt:new Date().toISOString(),vals:e.vals,pat:e.pat,conn:e.conn};
+        const i=d[e.motor].findIndex(x=>x.name===nm); if(i>=0) d[e.motor][i]=ent; else d[e.motor].push(ent);}
+      const stored=saveP(d), last=ok[ok.length-1], nm=String(last.name||file.name.replace(/\.json$/i,'')).slice(0,60);
+      if(last.motor!==motor) setMotor(last.motor);
+      applySet(last); fillSel(stored?nm:''); $('pName').value=nm;
+      pmsg(`已匯入「${nm}」`+(ok.length>1?`等 ${ok.length} 組`:'')+(stored?'。':'，但瀏覽器不允許儲存，僅套用到目前畫面。'),stored?'ok':'warn');
+    }catch(e){pmsg('檔案格式不正確，請選擇由本工具匯出的 JSON。','warn');}
+    $('pImp').value='';
+  };
+  rd.readAsText(file);
+});
+fillSel('');
 /* 參數 ↔ 圖上尺寸：游標移到或聚焦某個輸入欄時，凸顯對應的尺寸標註 */
 const DIMKEY={L:'L',b:'b',h:'h',Ry:'Ry',Z:'Z',Ds:'Ds',Di:'Di',wso:'wso',i:'i',r0:'r0',rf:'rf',tmax:'tmax',d:'dout',dout:'dout',N:'t',ns:'t',g:'t'};
 let hoverKey=null, focusKey=null;
