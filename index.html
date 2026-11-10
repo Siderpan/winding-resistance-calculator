@@ -378,42 +378,51 @@ function dimV(x,y1,y2,label,ext){
 }
 const DEFS=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="var(--ink)" stroke-width="1.4"/></marker></defs>`;
 
-/* 剖面 A–A：齒在中間，兩側線圈 */
+/* 剖面 A–A：極靴在上、圓弧軛部在下，齒在中間，兩側線圈 */
 function drawA(R){
   const {p,layers,t,pa}=R, svg=$('svgA');
   const W=560;
   const tw=Math.max(t,p.tmax||0)+p.dout*.4;
-  const xHalf=p.b/2+p.i+tw;
-  const yk=Math.max(p.h*.12,p.dout*2), sh=yk;
-  const Ht=yk+2*p.i+p.h+sh;
-  const s=Math.min((W-150)/(2*xHalf),330/Ht);
-  const cx=W/2, top=24;
+  const xHalf=p.b/2+p.i+tw, xw=xHalf+p.dout;
+  const sh=Math.max(p.h*.12,p.dout*2);
+  const Rc=3*xw;                                     // 軛部外圓半徑（示意比例）
+  const yk=Math.min(Math.max(p.h*.22,p.dout*3),.8*xw);
+  const yA=sh+2*p.i+p.h-(Rc-Math.sqrt(Rc*Rc-p.b*p.b/4)); // 讓外圓在齒側剛好接到絕緣底面
+  const yY=yA;
+  const yArc=x=>yA+Rc-Math.sqrt(Rc*Rc-x*x);
+  const yIn=x=>yY+Rc-Math.sqrt((Rc-yk)*(Rc-yk)-x*x);
+  const Ht=yIn(xw);
+  const s=Math.min((W-150)/(2*xw),330/Ht);
+  const cx=W/2, top=28;
   const X=x=>cx+x*s, Y=y=>top+y*s;
   const H=Math.ceil(top+Ht*s+64);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   let g=DEFS;
-  const yW0=yk+p.i, yW1=yk+p.i+p.h;
-  // yoke, tooth, shoe
-  g+=`<rect x="${n2(X(-xHalf-p.dout))}" y="${n2(Y(0))}" width="${n2(2*(xHalf+p.dout)*s)}" height="${n2(yk*s)}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
-  g+=`<rect x="${n2(X(-p.b/2))}" y="${n2(Y(yk))}" width="${n2(p.b*s)}" height="${n2((2*p.i+p.h)*s)}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  const yW0=sh+p.i, yW1=sh+p.i+p.h;
+  const P=(x,y)=>n2(X(x))+' '+n2(Y(y));
+  const Ro=n2(Rc*s), Ri=n2((Rc-yk)*s);
+  // 齒＋圓弧軛部（一體）
+  g+=`<path d="M${P(-p.b/2,sh)}L${P(-p.b/2,yArc(-p.b/2))}A${Ro} ${Ro} 0 0 0 ${P(-xw,yArc(-xw))}L${P(-xw,yIn(-xw))}A${Ri} ${Ri} 0 0 1 ${P(xw,yIn(xw))}L${P(xw,yArc(xw))}A${Ro} ${Ro} 0 0 0 ${P(p.b/2,yArc(p.b/2))}L${P(p.b/2,sh)}Z" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  // 極靴（上方）
   const shH=p.b/2+p.i+tw*.85;
-  g+=`<path d="M${n2(X(-p.b/2))} ${n2(Y(yW1+p.i))}H${n2(X(-shH))}V${n2(Y(Ht))}H${n2(X(shH))}V${n2(Y(yW1+p.i))}H${n2(X(p.b/2))}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
-  g+=`<text x="${n2(X(-xHalf-p.dout)+6)}" y="${n2(Y(yk/2)+4)}">軛部</text><text x="${n2(X(shH)+6)}" y="${n2(Y(Ht-sh/2)+4)}">極靴</text>`;
-  // insulation (U-shaped bobbin both sides)
+  g+=`<path d="M${P(-p.b/2,sh)}H${n2(X(-shH))}V${n2(Y(0))}H${n2(X(shH))}V${n2(Y(sh))}H${n2(X(p.b/2))}" fill="var(--steel-fill)" stroke="var(--steel)"/>`;
+  g+=`<text x="${n2(X(-shH)-6)}" y="${n2(Y(sh/2)+4)}" text-anchor="end">極靴</text>`;
+  g+=`<text x="${n2(X(-xw)+6)}" y="${n2(Y(yArc(-xw)+yk*.55)+4)}">軛部</text>`;
+  // 絕緣（兩側骨架：上緣平面供排線，下緣貼合軛部圓弧）
   if(p.i>0){
     for(const sg of [1,-1]){
       const xa=sg*p.b/2, xb=sg*(p.b/2+p.i), xo=sg*(p.b/2+p.i+tw);
-      const pts=[[xa,yk],[xo,yk],[xo,yk+p.i],[xb,yk+p.i],[xb,yW1],[xo,yW1],[xo,yW1+p.i],[xa,yW1+p.i]];
-      g+=`<path d="M${pts.map(q=>n2(X(q[0]))+' '+n2(Y(q[1]))).join('L')}Z" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6"/>`;
+      const pts=[[xa,sh],[xo,sh],[xo,sh+p.i],[xb,sh+p.i],[xb,yW1],[xo,yW1],[xo,yArc(xo)]];
+      g+=`<path d="M${pts.map(q=>P(q[0],q[1])).join('L')}A${Ro} ${Ro} 0 0 ${sg>0?0:1} ${P(xa,yArc(xa))}Z" fill="var(--ins)" stroke="var(--enamel)" stroke-width=".6"/>`;
     }
   }
-  // tmax limit
+  // 可用厚度上限
   if(p.tmax>0){
     for(const sg of [1,-1]){const xl=X(sg*(p.b/2+p.i+p.tmax));
-      g+=`<line x1="${n2(xl)}" y1="${n2(Y(yk)-6)}" x2="${n2(xl)}" y2="${n2(Y(yW1+p.i)+6)}" stroke="var(--warn)" stroke-dasharray="5 4" stroke-width="1.2"/>`;}
-    g+=`<text x="${n2(X(p.b/2+p.i+p.tmax)+4)}" y="${n2(Y(yk)-8)}" style="fill:var(--warn)">上限</text>`;
+      g+=`<line x1="${n2(xl)}" y1="${n2(Y(sh)-6)}" x2="${n2(xl)}" y2="${n2(Y(yW1+p.i)+6)}" stroke="var(--warn)" stroke-dasharray="5 4" stroke-width="1.2"/>`;}
+    g+=`<text x="${n2(Math.max(X(p.b/2+p.i+p.tmax),X(shH))+5)}" y="${n2(Y(sh/2)+4)}" style="fill:var(--warn)">上限</text>`;
   }
-  // wires
+  // 導線
   const ro=p.dout/2*s, rc=p.d/2*s;
   const total=layers.reduce((a,L)=>a+L.n,0)*2;
   const simple=ro<2.2||total>5000;
@@ -430,14 +439,14 @@ function drawA(R){
     }
     g+=`<g class="lay" data-k="${L.k}">${w}</g>`;
   }
-  // mean path line (right side)
+  // 平均匝路徑（右側）
   const cm=(R.mlt-R.straight)/(2*Math.PI)-R.r0;
   if(cm>0){const xm=X(p.b/2+p.i+cm);g+=`<line x1="${n2(xm)}" y1="${n2(Y(yW0)-4)}" x2="${n2(xm)}" y2="${n2(Y(yW1)+4)}" stroke="var(--ink)" stroke-dasharray="4 3" stroke-width="1.1"/>`;}
-  // dims
+  // 尺寸
   const yd=Y(Ht)+20;
-  g+=dimH(X(-p.b/2),X(p.b/2),yd,'b',Y(Ht),Y(Ht));
+  g+=dimH(X(-p.b/2),X(p.b/2),yd,'b',Y(yW1+p.i),Y(yW1+p.i));
   g+=dimH(X(p.b/2+p.i),X(p.b/2+p.i+t),yd+26,'t='+f(t),Y(yW1),Y(yW1));
-  g+=dimV(X(-xHalf)-14,Y(yW0),Y(yW1),'h',X(-p.b/2-p.i-t));
+  g+=dimV(X(-xw)-14,Y(yW0),Y(yW1),'h',X(-p.b/2-p.i-t));
   svg.innerHTML=g;
 }
 
