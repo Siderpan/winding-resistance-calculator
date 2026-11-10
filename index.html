@@ -205,7 +205,16 @@ input,select{font-size:1rem;padding:8px 10px}
 .k{font-size:.92rem}
 .k td{padding:7px 0}
 .k caption{text-align:left;font-size:.78rem;letter-spacing:.06em;color:var(--copper);font-weight:500;padding-bottom:4px}
-.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px 28px}
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 28px}
+.dg{min-width:0}
+.dh small{font-weight:400;color:var(--muted);letter-spacing:0;margin-left:6px}
+.dh{font-size:.78rem;letter-spacing:.06em;color:var(--copper);font-weight:700;padding-bottom:6px;border-bottom:2px solid var(--copper-soft)}
+.dr{display:grid;grid-template-columns:minmax(0,1fr) auto 2.2em;align-items:center;gap:8px;height:40px;border-bottom:1px solid var(--line);font-size:.9rem}
+.dr:last-child{border-bottom:0}
+.dl{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl .chip{margin-left:6px;vertical-align:1px}
+.dv{font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right;color:var(--ink);font-weight:600}
+.du{color:var(--muted);font-size:.8rem}
 @media (max-width:900px){.dgrid{grid-template-columns:minmax(0,1fr)}}
 #msgs{margin-top:14px}
 #msgs:empty{display:none}
@@ -219,12 +228,12 @@ input,select{font-size:1rem;padding:8px 10px}
 .lt th,.lt td{white-space:nowrap}
 @media (min-width:961px){.inputs{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);max-height:calc(100vh - 24px);overflow-y:auto;padding-right:4px;scrollbar-width:thin}}
 /* compact inputs: 全部參數一頁顯示 */
-.inputs{gap:10px}
+.inputs{gap:8px}
 .inputs section.step{padding:10px 12px 12px}
 .inputs .step h2{font-size:.92rem;margin:0 0 7px;gap:8px}
 .inputs .step h2 .n{font-size:.72rem}
 .inputs .fields{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 10px}
-.inputs .lab{font-size:.78rem;min-height:0;line-height:1.25;gap:4px}
+.inputs .lab{font-size:.8rem;min-height:0;line-height:1.3;gap:4px;margin-bottom:0}
 .inputs .lab .info{width:15px;height:15px;font-size:9px}
 .inputs .inw{position:relative;display:block}
 .inputs .inw input{padding:5px 30px 5px 8px;font-size:.92rem}
@@ -241,10 +250,10 @@ input,select{font-size:1rem;padding:8px 10px}
 .inputs .srow{flex-direction:row;align-items:center;gap:10px}
 .inputs .srow .lab{flex:0 0 auto}
 .inputs .srow .seg{flex:1}
-.inputs .fields{gap:4px 10px}
-.inputs .inw input{padding-top:4px;padding-bottom:4px}
-.inputs section.step{padding:8px 12px 10px}
-.inputs .step h2{margin-bottom:5px}
+.inputs .fields{gap:6px 12px}
+.inputs .inw input{padding-top:5px;padding-bottom:5px}
+.inputs section.step{padding:10px 14px 10px}
+.inputs .step h2{margin-bottom:6px}
 .inputs{gap:8px}
 .inputs .pmsg:empty{display:none}
 .inputs .prow input[type=text]{min-width:120px}
@@ -313,7 +322,7 @@ input,select{font-size:1rem;padding:8px 10px}
   </section>
 
   <section class="step">
-    <h2><span class="n">4</span>繞組、接線與溫度</h2>
+    <h2><span class="n">4</span>繞組與溫度</h2>
     <div class="fields">
       <div class="f"><label class="lab" for="cpp"><span class="tx">每相線圈數</span><button class="info" data-k="cpp" type="button">?</button><span class="u">個</span></label><input id="cpp" type="number" step="1" min="1" value="4"></div>
       <div class="f"><label class="lab" for="a"><span class="tx">並聯路數 a</span><button class="info" data-k="a" type="button">?</button><span class="u">路</span></label><input id="a" type="number" step="1" min="1" value="1"></div>
@@ -321,7 +330,7 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="rho"><span class="tx">ρ<sub>20</sub></span><button class="info" data-k="rho" type="button">?</button><span class="u">Ω·mm²/m</span></label><input id="rho" type="number" step="0.0001" value="0.017241"></div>
       <div class="f"><label class="lab" for="Tref"><span class="tx">參考溫度</span><span class="u">°C</span></label><input id="Tref" type="number" step="1" value="20"></div>
       <div class="f"><label class="lab" for="Top"><span class="tx">工作溫度</span><span class="u">°C</span></label><input id="Top" type="number" step="1" value="110"></div>
-      <div class="f full srow"><span class="lab"><span class="tx">接線方式</span></span>
+      <div class="f full srow" hidden><span class="lab"><span class="tx">接線方式</span></span>
         <div class="seg" role="group" aria-label="接線方式"><button type="button" id="cY" aria-pressed="true">Y 星形</button><button type="button" id="cD" aria-pressed="false">Δ 三角形</button></div></div>
     </div>
   </section>
@@ -1061,11 +1070,11 @@ function renderTables(R){
   $('kLen').innerHTML=f(R.strand/1000,3)+' <small>m'+(p.ns>1?' × '+p.ns+' 股':'')+'</small>';
   const diff=(R.mltF/R.mlt-1)*100;
   const fillChip=R.fill<.5?'<span class="chip ok">寬鬆</span>':R.fill<.7?'<span class="chip mid">一般</span>':'<span class="chip warn">偏高</span>';
-  const grp=(t,rows)=>`<table class="k"><caption>${t}</caption>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>`;
+  const grp=(t,rows)=>`<div class="dg"><div class="dh">${t}</div>${rows.map(r=>`<div class="dr"><span class="dl">${r[0]}</span><span class="dv">${r[1]}</span><span class="du">${r[2]||''}</span></div>`).join('')}</div>`;
   $('detail').innerHTML=
-    grp('排線結果',[['層數',R.layers.length+' 層'],['每層可排根數',R.capMin===R.capMax?R.capMin:R.capMin+'～'+R.capMax],['線圈厚度 t（單邊）',f(R.t)+' mm'],['繞線窗口佔積率',(R.fill*100).toFixed(1)+' %'+fillChip]])+
-    grp('匝長',[['MLT（逐層排線）',f(R.mlt,2)+' mm'],['MLT（簡化公式）',f(R.mltF,2)+' mm'],['簡化公式偏差',(diff>=0?'+':'')+diff.toFixed(1)+' %'],['每相線長',f(R.phaseLen,2)+' m']])+
-    grp('電阻 @ 20 °C',[['單一線圈 R<sub>coil</sub>',f(R.Rcoil)+' Ω'],['每相 R<sub>ph</sub>',f(R.Rph20)+' Ω'],['端子間 R<sub>LL</sub>（'+(conn==='Y'?'Y':'Δ')+'）',f(R.Rph20*R.kLL)+' Ω']]);
+    grp('排線結果',[['層數',R.layers.length,'層'],['每層根數',R.capMin===R.capMax?R.capMin:R.capMin+'～'+R.capMax,'根'],['線圈厚度 t',f(R.t),'mm'],['佔積率'+fillChip,(R.fill*100).toFixed(1),'%']])+
+    grp('匝長',[['MLT 逐層',f(R.mlt,2),'mm'],['MLT 簡化公式',f(R.mltF,2),'mm'],['公式偏差',(diff>=0?'+':'')+diff.toFixed(1),'%'],['每相線長',f(R.phaseLen,2),'m']])+
+    grp('電阻<small>未註明者為 20 °C</small>',[['線圈 R<sub>coil</sub>',f(R.Rcoil),'Ω'],['每相 R<sub>ph</sub>',f(R.Rph20),'Ω'],['R<sub>LL</sub>（'+(conn==='Y'?'Y':'Δ')+'）',f(R.Rph20*R.kLL),'Ω'],['R<sub>LL</sub> @ '+p.Top+' °C',f(R.Rph20*R.kLL*kT(p.Top)),'Ω']]);
   $('msgs').innerHTML=R.msgs.map(m=>`<li class="${m[0]}">${m[1]}</li>`).join('');
   let h='<thead><tr><th>層</th><th>根數</th><th>c (mm)</th><th>每匝長 (mm)</th><th>本層線長 (mm)</th><th>累計匝</th></tr></thead><tbody>';
   let cum=0;
