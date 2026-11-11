@@ -581,6 +581,7 @@ function compute(){
   // ---- 排線：張力使每一層導線落入上一層兩線之間的凹槽 ----
   // 導線中心形成六角（正交）緊密排列：層內間距 pa = g·d_o，層距 pr = 0.866·pa，相鄰層錯開 pa/2。
   // 第一層由軛部側開始貼底；之後各層沿用同一組格點，只保留落在窗口邊界（含槽內 R 角、軛部圓弧）內的位置。
+  // 繞線順序來回進行：奇數層 軛部→極靴，偶數層 極靴→軛部，未繞滿的最後一層依此方向決定所在位置。
   const pr=Math.sqrt(3)/2*pa, mode='nest';
   const ph0=yBot(x0+rw);
   const posAt=(c,ph)=>{const xcc=x0+c,lo=yTop(xcc)-1e-9,hi=yBot(xcc)+1e-9,a=[];
@@ -596,7 +597,9 @@ function compute(){
     const c=rw+k*pr, all=posAt(c,ph0+(k%2)*pa/2);
     k++;
     if(!all.length){if(++empty>3) break; continue;}
-    const ys=all.slice(0,Math.min(all.length,left)), n=ys.length, len=lenOf(c);
+    // 來回繞：奇數層（第 1、3、5…層）由軛部側往極靴側；偶數層由極靴側返回軛部側
+    const m=Math.min(all.length,left), back=layers.length%2===1;
+    const ys=back?all.slice(all.length-m).reverse():all.slice(0,m), n=ys.length, len=lenOf(c);
     layers.push({k:layers.length,n,cap:all.length,c,len,sumL:n*len,cs:ys.map(()=>c),ys,cmax:c,start:total-left});
     left-=n;
   }
