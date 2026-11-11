@@ -316,7 +316,7 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="N"><span class="tx">每線圈匝數 N</span><button class="info" data-k="N" type="button">?</button><span class="u">匝</span></label><input id="N" type="number" step="1" min="1" value="60"></div>
       <div class="f"><label class="lab" for="ns"><span class="tx">並繞股數 n<sub>s</sub></span><button class="info" data-k="ns" type="button">?</button><span class="u">股</span></label><input id="ns" type="number" step="1" min="1" max="20" value="1"></div>
       <div class="f"><label class="lab" for="g"><span class="tx">鬆散係數 g</span><button class="info" data-k="g" type="button">?</button></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
-      <div class="f full srow"><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
+      <div class="f full srow" hidden><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
         <div class="seg" role="group" aria-label="排線方式"><button type="button" id="pSq" aria-pressed="true">整齊方格</button><button type="button" id="pOr" aria-pressed="false">正交嵌入</button></div></div>
     </div>
   </section>
@@ -578,33 +578,34 @@ function compute(){
   const yfB=Ry>0?sg*(yc-sqr(Rins+sg*rf,x0+rf)):p.h-rf;
   const yTop=xc=>{const dx=x0+rf-xc;return (rf>rw&&dx>0)?Math.max(rw,rf-Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx))):rw;};
   const yBot=xc=>{let m=yMax(xc);const dx=x0+rf-xc;if(rf>rw&&dx>0)m=Math.min(m,yfB+Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx)));return m;};
-  // 由軛部側（窗口底）開始往極靴側排：phase 為 null 時貼齊本層底部；否則沿用指定相位（正交嵌入用）
-  // 回傳由底往上排序的位置，填線時先用底部位置
-  const posAt=(c,phase)=>{const xc=x0+c,lo=yTop(xc)-1e-9,hi=yBot(xc)+1e-9,a=[];
-    let y0=hi; if(phase!=null){y0=phase+Math.floor((hi-phase)/pa+1e-9)*pa;}
-    for(let j=0;j<5000;j++){const y=y0-j*pa;if(y<lo)break;if(y<=hi)a.push(y);}return a;};
-  const n0=posAt(rw,null).length;
+  // ---- 排線：張力使每一層導線落入上一層兩線之間的凹槽 ----
+  // 導線中心形成六角（正交）緊密排列：層內間距 pa = g·d_o，層距 pr = 0.866·pa，相鄰層錯開 pa/2。
+  // 第一層由軛部側開始貼底；之後各層沿用同一組格點，只保留落在窗口邊界（含槽內 R 角、軛部圓弧）內的位置。
+  const pr=Math.sqrt(3)/2*pa, mode='nest';
+  const ph0=yBot(x0+rw);
+  const posAt=(c,ph)=>{const xcc=x0+c,lo=yTop(xcc)-1e-9,hi=yBot(xcc)+1e-9,a=[];
+    let y=ph+Math.floor((hi-ph)/pa+1e-9)*pa;
+    for(let j=0;j<5000&&y>=lo;j++,y-=pa) if(y<=hi) a.push(y);
+    return a;};                                          // 由軛部側往極靴側排序
+  const n0=posAt(rw,ph0).length;
   if(n0<1){R.err='第一層排不下任何導線：可繞線長度 l_w 太小，或槽內 R 角 r_f 太大。';return R;}
-  let mode=pat;
-  if(mode==='or'&&n0<2){mode='sq';R.msgs.push(['','第一層只能排 1 根，正交嵌入無法成立，已改用整齊方格計算。']);}
-  const pr=(mode==='or'?Math.sqrt(3)/2:1)*pa;
   const straight=2*(Lp-2*r0)+2*(bp-2*r0);
-  const total=p.N*p.ns; let left=total, k=0; const layers=[];
+  const lenOf=c=>straight+2*Math.PI*(r0+c);
+  const total=p.N*p.ns; let left=total, k=0, empty=0; const layers=[];
   while(left>0&&k<500){
-    const odd=mode==='or'&&k%2===1, shift=odd?pa/2:0;
-    const c=rw+k*pr;
-    const prev=layers[k-1];
-    const ys=posAt(c,odd&&prev&&prev.all.length?prev.all[0]-pa/2:null), cap=ys.length, n=Math.min(cap,left);
-    const len=straight+2*Math.PI*(r0+c);
-    layers.push({k,n,cap,c,len,shift,all:ys,ys:ys.slice(0,n),start:total-left});
-    left-=n;k++;
+    const c=rw+k*pr, all=posAt(c,ph0+(k%2)*pa/2);
+    k++;
+    if(!all.length){if(++empty>3) break; continue;}
+    const ys=all.slice(0,Math.min(all.length,left)), n=ys.length, len=lenOf(c);
+    layers.push({k:layers.length,n,cap:all.length,c,len,sumL:n*len,cs:ys.map(()=>c),ys,cmax:c,start:total-left});
+    left-=n;
   }
   if(left>0){R.err='超過 500 層，請檢查匝數、線徑與可繞線長度。';return R;}
-  const sum=layers.reduce((s,L)=>s+L.n*L.len,0);       // mm, all wire positions
+  const sum=layers.reduce((s,L)=>s+L.sumL,0);           // mm, all wire positions
   const strand=sum/p.ns;                                  // mm per strand
   const mlt=strand/p.N;
   const last=layers[layers.length-1];
-  const t=last.c+p.dout/2;
+  const t=Math.max(...layers.map(L=>L.cmax))+p.dout/2;
   const mltF=2*Lp+2*bp+Math.PI*t;
   const A=Math.PI/4*p.d*p.d;
   const Rcoil=p.rho*(strand/1000)/(A*p.ns);
@@ -625,7 +626,7 @@ function compute(){
     const st={al,minGap:Infinity,bad:0,err:null};
     const rhoU=yc+sg*p.i;
     if(p.b/2>=(sg>0?Ry:rhoU)*sa) st.err='齒寬太大：相鄰兩齒已經重疊，請檢查齒寬、R_y、可繞線長度與槽數。';
-    for(const L of layers){L.bad=L.ys.map(y=>{const d=(yc-sg*y)*sa-(x0+L.c)*ca-rw;if(d<st.minGap)st.minGap=d;if(d<-1e-9){st.bad++;return true;}return false;});}
+    for(const L of layers){L.bad=L.ys.map((y,jj)=>{const d=(yc-sg*y)*sa-(x0+L.cs[jj])*ca-rw;if(d<st.minGap)st.minGap=d;if(d<-1e-9){st.bad++;return true;}return false;});}
     // 半槽面積（鋼材邊界：齒側面、軛部外圓、極靴下緣）與絕緣內淨面積，網格積分
     const yk0=x=>sg*(yc-sqr(Ry,x));
     const xm=Math.min((sg>0?yc+p.i:Ry)*Math.tan(al),Ry*.999), m=240;
@@ -804,7 +805,7 @@ function drawA(R){
       const yy=Y(yW0+yv), bad=L.bad&&L.bad[jj];
       const cc=bad?'var(--warn)':col;
       for(const sg of [1,-1]){
-        const xx=X(sg*(p.b/2+p.i+L.c));
+        const xx=X(sg*(p.b/2+p.i+L.cs[jj]));
         w+=simple?`<circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(Math.max(ro,.6))}" fill="${cc}"/>`
                  :`<circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(ro)}" fill="var(--enamel)"/><circle cx="${n2(xx)}" cy="${n2(yy)}" r="${n2(rc)}" fill="${cc}"/>`;
       }
@@ -820,7 +821,7 @@ function drawA(R){
   g+=dimH(X(p.b/2+p.i),X(p.b/2+p.i+t),yd+26,'t = '+f(t),Y(yW1),Y(yIns(p.b/2+p.i+t)),'t');
   g+=dimV(X(-xw)-14,Y(yW0),Y(yW1),SUB('l','w')+' = '+f(p.h,2),X(-p.b/2-p.i),'h');
   // 參數引線：導線外徑、絕緣厚、槽內 R 角
-  {const Lo=layers[layers.length-1], yv=Lo.ys[Math.floor(Lo.ys.length/2)], xr=p.b/2+p.i+Lo.c;
+  {const Lo=layers[layers.length-1], jm=Math.floor(Lo.ys.length/2), yv=Lo.ys[jm], xr=p.b/2+p.i+Lo.cs[jm];
    if(yv!==undefined) g+=leader([[X(xr)+ro*.7,Y(yW0+yv)],[X(xw)+4,Y(yW0+yv)]],SUB('d','o')+' = '+f(p.dout),'dout');}
   if(p.i>0){const xi=Math.min(p.b/2+p.i+tw,xw)-p.i*.6, yi=(yIns(xi)+yYoke(xi))/2;
    g+=leader([[X(xi),Y(yi)],[X(xw)+4,Y(yi)+10]],'i = '+f(p.i,2),'i');}
@@ -875,7 +876,7 @@ function drawS(R){
     if(p.i>0) for(const q of [1,-1]) insl+=`<path d="${path(th,ins.map(z=>[q*z[0],z[1]]))}"/>`;
     for(const L of layers){
       const col=L.k%2?'var(--copper-2)':'var(--copper)';
-      L.ys.forEach((y,jj)=>{for(const q of [1,-1]){const z=T(th,q*(R.x0+L.c),y);
+      L.ys.forEach((y,jj)=>{for(const q of [1,-1]){const z=T(th,q*(R.x0+L.cs[jj]),y);
         const c=`<circle cx="${n2(z[0])}" cy="${n2(z[1])}" r="${n2(ro)}"`;
         if(L.bad&&L.bad[jj]) bad+=c+'/>'; else wires+=c+` fill="${col}"/>`;}});
     }
@@ -1080,10 +1081,10 @@ function renderTables(R){
     grp('匝長',[['MLT 逐層',f(R.mlt,2),'mm'],['MLT 簡化公式',f(R.mltF,2),'mm'],['公式偏差',(diff>=0?'+':'')+diff.toFixed(1),'%'],['每相線長',f(R.phaseLen,2),'m']])+
     grp('電阻<small>未註明者為 20 °C</small>',[['線圈 R<sub>coil</sub>',f(R.Rcoil),'Ω'],['每相 R<sub>ph</sub>',f(R.Rph20),'Ω'],['R<sub>LL</sub>（'+(conn==='Y'?'Y':'Δ')+'）',f(R.Rph20*R.kLL),'Ω'],['R<sub>LL</sub> @ '+p.Top+' °C',f(R.Rph20*R.kLL*kT(p.Top)),'Ω']]);
   $('msgs').innerHTML=R.msgs.map(m=>`<li class="${m[0]}">${m[1]}</li>`).join('');
-  let h='<thead><tr><th>層</th><th>根數</th><th>c (mm)</th><th>每匝長 (mm)</th><th>本層線長 (mm)</th><th>累計匝</th></tr></thead><tbody>';
+  let h='<thead><tr><th>層</th><th>根數</th><th>平均 c (mm)</th><th>平均每匝長 (mm)</th><th>本層線長 (mm)</th><th>累計匝</th></tr></thead><tbody>';
   let cum=0;
   for(const L of R.layers){cum+=L.n;
-    h+=`<tr data-k="${L.k}"><td>${L.k+1}</td><td>${L.n}${L.n<L.cap?'／'+L.cap:''}</td><td>${L.c.toFixed(3)}</td><td>${L.len.toFixed(2)}</td><td>${(L.n*L.len).toFixed(1)}</td><td>${(cum/p.ns).toFixed(p.ns>1?1:0)}</td></tr>`;}
+    h+=`<tr data-k="${L.k}"><td>${L.k+1}</td><td>${L.n}${L.n<L.cap?'／'+L.cap:''}</td><td>${L.c.toFixed(3)}</td><td>${L.len.toFixed(2)}</td><td>${L.sumL.toFixed(1)}</td><td>${(cum/p.ns).toFixed(p.ns>1?1:0)}</td></tr>`;}
   h+=`</tbody><tfoot><tr><td>合計</td><td>${p.N*p.ns}</td><td></td><td>平均 ${R.mlt.toFixed(2)}</td><td>${R.sum.toFixed(1)}</td><td>${p.N}</td></tr></tfoot>`;
   $('lt').innerHTML=h;
   $('lt').querySelectorAll('tbody tr').forEach(tr=>{
