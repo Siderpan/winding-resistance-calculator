@@ -578,9 +578,12 @@ function compute(){
   const yfB=Ry>0?sg*(yc-sqr(Rins+sg*rf,x0+rf)):p.h-rf;
   const yTop=xc=>{const dx=x0+rf-xc;return (rf>rw&&dx>0)?Math.max(rw,rf-Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx))):rw;};
   const yBot=xc=>{let m=yMax(xc);const dx=x0+rf-xc;if(rf>rw&&dx>0)m=Math.min(m,yfB+Math.sqrt(Math.max(0,(rf-rw)**2-dx*dx)));return m;};
-  const posAt=(c,shift)=>{const xc=x0+c,lo=yTop(xc)-1e-9,hi=yBot(xc)+1e-9,a=[];
-    for(let j=0;j<5000;j++){const y=rw+shift+j*pa;if(y>hi)break;if(y>=lo)a.push(y);}return a;};
-  const n0=posAt(rw,0).length;
+  // 由軛部側（窗口底）開始往極靴側排：phase 為 null 時貼齊本層底部；否則沿用指定相位（正交嵌入用）
+  // 回傳由底往上排序的位置，填線時先用底部位置
+  const posAt=(c,phase)=>{const xc=x0+c,lo=yTop(xc)-1e-9,hi=yBot(xc)+1e-9,a=[];
+    let y0=hi; if(phase!=null){y0=phase+Math.floor((hi-phase)/pa+1e-9)*pa;}
+    for(let j=0;j<5000;j++){const y=y0-j*pa;if(y<lo)break;if(y<=hi)a.push(y);}return a;};
+  const n0=posAt(rw,null).length;
   if(n0<1){R.err='第一層排不下任何導線：可繞線長度 l_w 太小，或槽內 R 角 r_f 太大。';return R;}
   let mode=pat;
   if(mode==='or'&&n0<2){mode='sq';R.msgs.push(['','第一層只能排 1 根，正交嵌入無法成立，已改用整齊方格計算。']);}
@@ -590,9 +593,10 @@ function compute(){
   while(left>0&&k<500){
     const odd=mode==='or'&&k%2===1, shift=odd?pa/2:0;
     const c=rw+k*pr;
-    const ys=posAt(c,shift), cap=ys.length, n=Math.min(cap,left);
+    const prev=layers[k-1];
+    const ys=posAt(c,odd&&prev&&prev.all.length?prev.all[0]-pa/2:null), cap=ys.length, n=Math.min(cap,left);
     const len=straight+2*Math.PI*(r0+c);
-    layers.push({k,n,cap,c,len,shift,ys:ys.slice(0,n),start:total-left});
+    layers.push({k,n,cap,c,len,shift,all:ys,ys:ys.slice(0,n),start:total-left});
     left-=n;k++;
   }
   if(left>0){R.err='超過 500 層，請檢查匝數、線徑與可繞線長度。';return R;}
