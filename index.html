@@ -315,6 +315,8 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="r0"><span class="tx">側視轉角 r<sub>0</sub></span><button class="info" data-k="r0" type="button">?</button><span class="u">mm</span></label><input id="r0" type="number" step="0.05" min="0" value="0.5"></div>
       <div class="f"><label class="lab" for="rf"><span class="tx">槽內 R 角 r<sub>f</sub></span><button class="info" data-k="rf" type="button">?</button><span class="u">mm</span></label><input id="rf" type="number" step="0.05" min="0" value="0.5"></div>
       <div class="f"><label class="lab" for="tmax"><span class="tx">可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
+      <div class="f"><label class="lab" for="hup"><span class="tx">上方高度限制 H<sub>上</sub></span><button class="info" data-k="hup" type="button">?</button><span class="u">mm</span></label><input id="hup" type="number" step="0.05" min="0" value="0"></div>
+      <div class="f"><label class="lab" for="hdn"><span class="tx">下方高度限制 H<sub>下</sub></span><button class="info" data-k="hdn" type="button">?</button><span class="u">mm</span></label><input id="hdn" type="number" step="0.05" min="0" value="0"></div>
     </div>
   </section>
 
@@ -456,6 +458,8 @@ const G={
   i:['絕緣厚','i','齒面到導線之間的絕緣單邊厚度，例如絕緣骨架壁厚、絕緣紙或粉體塗裝。四面各加一次，所以繞線的內圈是 (L+2i) × (b+2i)。'],
   rf:['槽內 R 角','r_f','絕緣骨架在齒側壁與上、下擋板（極靴側、軛部側）交接處的內圓角，如槽空間排線圖上齒根與齒頂的四個角。\n圓角會佔掉角落的位置：導線中心距圓角圓心須 ≤ r_f − d_o/2，落在圓角內的排線位置會被略過。\n設 0 為直角。'],
   r0:['側視轉角半徑','r₀','側視圖中絕緣外表面在四個角的圓角半徑，也就是第一層導線繞過齒部轉角的地方。\n粉體塗裝約等於 i；骨架依模具設計，常見 0.3～1 mm。設 0 等於直角轉彎。'],
+  hup:['上方高度限制','H_上','側視圖上方（疊片上端面往外）允許線圈伸出的最大高度，含絕緣厚 i 與線圈厚度 t。用來檢查線圈是否碰到上蓋、輪轂或 PCB。設 0 表示不檢查。'],
+  hdn:['下方高度限制','H_下','側視圖下方（疊片下端面往外）允許線圈伸出的最大高度，含絕緣厚 i 與線圈厚度 t。用來檢查線圈是否碰到底座、軸承座或 PCB。設 0 表示不檢查。'],
   tmax:['可用厚度上限','t_max','單邊。線圈從絕緣面往外最多能堆多厚，通常是相鄰兩齒之間的槽寬一半，再扣掉安全間隙與繞線針嘴空間。超過時會標紅警告。設 0 表示不檢查。'],
   d:['裸銅線徑','d','導體直徑，用來算銅截面積與電阻。'],
   dout:['完成外徑','d_o','含漆膜的漆包線外徑，用來排線與算線圈厚度。請填線材規格書的最大外徑；IEC 60317 Grade 1/2 的漆膜增量依線徑不同，0.35 mm Grade 2 約 0.39～0.40 mm。'],
@@ -560,7 +564,7 @@ const f=(x,dg=3)=>!isFinite(x)?'—':Math.abs(x)>=1000?x.toFixed(0):Math.abs(x)>
 
 /* ---------- core computation ---------- */
 function compute(){
-  const p={L:v('L'),b:v('b'),h:v('h'),i:Math.max(0,v('i')||0),rf:Math.max(0,v('rf')||0),r0:Math.max(0,v('r0')||0),tmax:Math.max(0,v('tmax')||0),
+  const p={L:v('L'),b:v('b'),h:v('h'),i:Math.max(0,v('i')||0),rf:Math.max(0,v('rf')||0),r0:Math.max(0,v('r0')||0),tmax:Math.max(0,v('tmax')||0),hup:Math.max(0,v('hup')||0),hdn:Math.max(0,v('hdn')||0),
     d:v('d'),dout:v('dout'),N:Math.max(1,Math.round(v('N')||1)),ns:Math.max(1,Math.round(v('ns')||1)),g:Math.max(1,v('g')||1),
     cpp:Math.max(1,Math.round(v('cpp')||1)),a:Math.max(1,Math.round(v('a')||1)),lead:Math.max(0,v('lead')||0),rho:v('rho'),Tref:v('Tref'),Top:v('Top')};
   const R={p,msgs:[]};
@@ -685,6 +689,10 @@ function compute(){
   if(sg>0&&Ry>0&&x0+t>.75*Ry) R.msgs.push(['warn','線圈外緣已接近軛部圓弧的側邊，實際上會碰到相鄰齒的線圈或槽底，請確認 R_y 與槽形。']);
   if(p.tmax>0&&t>p.tmax+1e-9) R.msgs.push(['warn',`線圈厚度 ${f(t)} mm 超過可用上限 ${f(p.tmax)} mm，相鄰線圈會干涉。可減少匝數、改細線或增加可繞線長度。`]);
   else if(p.tmax>0) R.msgs.push(['ok',`線圈厚度 ${f(t)} mm，在上限 ${f(p.tmax)} mm 內，餘裕 ${f(p.tmax-t)} mm。`]);
+  { const oh=p.i+t; R.oh=oh;   // 線圈自疊片端面往上／下伸出的高度（絕緣＋線圈厚）
+    for(const [k,nm] of [['hup','上方'],['hdn','下方']]){ const H=p[k]; if(!(H>0)) continue;
+      if(oh>H+1e-9) R.msgs.push(['warn',`側視${nm}伸出 ${f(oh)} mm（i + t）超過${nm}高度限制 ${f(H)} mm，超出 ${f(oh-H)} mm。`]);
+      else R.msgs.push(['ok',`側視${nm}伸出 ${f(oh)} mm，在${nm}高度限制 ${f(H)} mm 內，餘裕 ${f(H-oh)} mm。`]); } }
   if(last.n<last.cap) R.msgs.push(['',`最外層只排了 ${last.n}／${last.cap} 根，屬未滿層。`]);
   if(p.ns>1&&capMin!==capMax||p.ns>1&&n0%p.ns!==0) R.msgs.push(['','每層根數不是股數的整數倍，部分匝的兩股會跨層，線長仍依實際位置計算。']);
   return R;
@@ -1011,9 +1019,9 @@ $('boxD').addEventListener('click',()=>$('cD').click());
 /* 側視圖：每層匝路徑為等距圓角矩形 */
 function drawB(R){
   const {p,layers,t,Lp,bp,r0}=R, svg=$('svgB');
-  const W=380, Xh=bp/2+t, Yh=Lp/2+t;
-  const s=Math.min((W-170)/(2*Xh),330/(2*Yh));
-  const cx=W/2+10, top=32, cy=top+Yh*s;
+  const W=380, Xh=bp/2+t, oh=p.i+t, Yh=Math.max(Lp/2+t,p.L/2+p.hup,p.L/2+p.hdn);
+  const s=Math.min((W-(p.hup>0||p.hdn>0?215:170))/(2*Xh),330/(2*Yh));
+  const cx=W/2+(p.hup>0||p.hdn>0?-8:10), top=32, cy=top+Yh*s;
   const H=Math.ceil(cy+Yh*s+52);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   let g=DEFS;
@@ -1027,6 +1035,17 @@ function drawB(R){
   const cm=(R.mlt-R.straight)/(2*Math.PI)-r0;
   if(cm>0) g+=`<path d="${rrPath(cx,cy,(bp+2*cm)*s,(Lp+2*cm)*s,(r0+cm)*s)}" fill="none" stroke="var(--ink)" stroke-dasharray="5 4" stroke-width="1.3"/>`;
   g+=`<text x="${n2(cx)}" y="${n2(cy+4)}" text-anchor="middle" style="fill:var(--steel);font-weight:600">齒</text>`;
+  // 上／下高度限制：自疊片端面起算，線圈伸出 i + t 超過即標紅
+  for(const [k,sg,nm] of [['hup',-1,'上'],['hdn',1,'下']]){ const H=p[k]; if(!(H>0)) continue;
+    const bad=oh>H+1e-9, col=bad?'var(--warn)':'var(--ok)', yf=cy+sg*p.L/2*s, yl=cy+sg*(p.L/2+H)*s, xr=cx+Xh*s+14;
+    g+=`<g class="dim" data-dim="${k}">`;
+    if(bad) g+=`<rect x="${n2(cx-Xh*s)}" y="${n2(Math.min(yl,cy+sg*(p.L/2+oh)*s))}" width="${n2(2*Xh*s)}" height="${n2(Math.abs(oh-H)*s)}" fill="var(--warn)" fill-opacity=".22"/>`;
+    g+=`<line x1="${n2(cx-Xh*s-10)}" y1="${n2(yl)}" x2="${n2(xr+6)}" y2="${n2(yl)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="6 3"/>`;
+    g+=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(cx+p.b/2*s)}" y1="${n2(yf)}" x2="${n2(xr+5)}" y2="${n2(yf)}" stroke-opacity=".45"/>`;
+    g+=`<line x1="${n2(xr)}" y1="${n2(yf)}" x2="${n2(xr)}" y2="${n2(yl)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
+    g+=`<text class="dimt" x="${n2(xr+8)}" y="${n2((yf+yl)/2+4)}" style="fill:${col}">H<tspan dy="3" font-size="9">${nm}</tspan><tspan dy="-3"> = ${f(H,2)}</tspan></text>`;
+    if(bad) g+=`<text class="dimt" x="${n2(xr+8)}" y="${n2((yf+yl)/2+18)}" style="fill:var(--warn)">超出 ${f(oh-H,2)}</text>`;
+    g+='</g>'; }
   g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L = '+f(p.L,2),cx-p.b/2*s,'L');
   g+=dimH(cx-p.b/2*s,cx+p.b/2*s,cy+Yh*s+18,'b = '+f(p.b,2),cy+p.L/2*s,cy+p.L/2*s,'b');
   if(r0>0){const ccx=cx+(bp/2-r0)*s, ccy=cy-(Lp/2-r0)*s, q=[ccx+r0*s*Math.SQRT1_2,ccy-r0*s*Math.SQRT1_2];
@@ -1148,7 +1167,7 @@ function fillSel(sel){
   $('pMode').textContent=(motor==='out'?'外轉式':'內轉式')+' · '+list.length+' 個';
 }
 function applySet(e){
-  for(const id of IN_IDS) if(e.vals&&e.vals[id]!=null) $(id).value=e.vals[id];
+  for(const id of IN_IDS) if(e.vals&&e.vals[id]!=null) $(id).value=e.vals[id]; else if(id==='hup'||id==='hdn') $(id).value=0;
   if(e.pat) $(e.pat==='or'?'pOr':'pSq').click();
   if(e.conn) $(e.conn==='D'?'cD':'cY').click();
   run();
@@ -1246,7 +1265,7 @@ $('pImp').addEventListener('change',()=>{
 });
 fillSel('');
 /* 參數 ↔ 圖上尺寸：游標移到或聚焦某個輸入欄時，凸顯對應的尺寸標註 */
-const DIMKEY={L:'L',b:'b',h:'h',Ry:'Ry',Z:'Z',Ds:'Ds',Di:'Di',wso:'wso',i:'i',r0:'r0',rf:'rf',tmax:'tmax',d:'dout',dout:'dout',N:'t',ns:'t',g:'t'};
+const DIMKEY={L:'L',b:'b',h:'h',Ry:'Ry',Z:'Z',Ds:'Ds',Di:'Di',wso:'wso',i:'i',r0:'r0',rf:'rf',tmax:'tmax',hup:'hup',hdn:'hdn',d:'dout',dout:'dout',N:'t',ns:'t',g:'t'};
 let hoverKey=null, focusKey=null;
 paintHot=function(){
   const k=hoverKey||focusKey;
