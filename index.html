@@ -1352,19 +1352,24 @@ async function build(){
     const cy0=yB+44, ch=hB-44-18;
     cad(PAD+18,cy0,wC-36,ch); x.drawImage(im.im,PAD+(wC-im.w)/2,cy0+(ch-im.h)/2,im.w,im.h);
   }
-  // 計算結果（2 列 × 3 欄）
+  // 計算結果：R_LL 大卡＋8 項小卡
   const wL=320, kx0=PAD+iY.w+76+GAP, wK=W-PAD-wL-GAP-kx0;
   { panel(kx0,yB,wK,hB,'計算結果');
-    const K=[['端子間電阻 R<sub>LL</sub>','kRLL',1],['工作溫度 R<sub>LL</sub>','kRLLop'],['每相 R<sub>ph</sub>','kRph'],['平均匝長 MLT','kMLT'],['每線圈線長','kLen']];
-    const cols=3, gx=12, tw=(wK-36-gx*(cols-1))/cols, th=(hB-44-18-gx)/2;
-    K.forEach(([lb,id,hl],i)=>{const ci=i?1+(i-1)%2:0, ri=i?Math.floor((i-1)/2):0;
-      const tx=kx0+18+ci*(tw+gx), ty=yB+44+ri*(th+gx), h=i?th:2*th+gx;
-      rr(tx,ty,tw,h,8,hl?C.panel:C.sunk,hl?C.cu:C.line,hl?1.6:1);
-      const el=$(id), sm=el.querySelector('small'), num=(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim();
-      const cy=ty+h/2, big=hl?44:32;
-      rich(lb,tx+16,cy-(hl?34:24),hl?16:14.5,{c:C.muted});
-      T(num,tx+16,cy+(hl?20:14),big,{c:hl?C.cu:C.ink,w:600,fam:MONO});
-      if(sm) T(sm.textContent.trim(),tx+16,cy+(hl?50:38),hl?15:13.5,{c:C.muted,fam:MONO});});
+    const R=lastR, P=R.p, kv=id=>{const el=$(id), sm=el.querySelector('small');
+      return [(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim(), sm?sm.textContent.trim():''];};
+    const K=[['端子間電阻 R<sub>LL</sub>',...kv('kRLL'),1],['工作溫度 R<sub>LL</sub>',...kv('kRLLop')],['每相 R<sub>ph</sub>',...kv('kRph')],
+      ['裸銅線徑 d',String(P.d),'mm'],['完成外徑 d<sub>o</sub>',String(P.dout),'mm'],
+      ['每線圈匝數 N',String(P.N),P.ns>1?'匝 × '+P.ns+' 股':'匝'],['層數',String(R.layers.length),'層'],
+      ['線圈厚度 t',f(R.t),'mm'],['佔積率',(R.fill*100).toFixed(1),'%']];
+    // 左側 R_LL 大卡跨兩列，右側其餘 8 項排成 4 欄 × 2 列
+    const cols=4, gx=12, bw=(wK-36-gx*cols)*0.26, tw=(wK-36-gx*cols-bw)/cols, th=(hB-44-18-gx)/2;
+    K.forEach(([lb,num,unit,hl],i)=>{const ci=i?(i-1)%cols:0, ri=i?Math.floor((i-1)/cols):0;
+      const tx=i?kx0+18+bw+gx+ci*(tw+gx):kx0+18, ty=yB+44+ri*(th+gx), h=i?th:2*th+gx, w=i?tw:bw;
+      rr(tx,ty,w,h,8,hl?C.panel:C.sunk,hl?C.cu:C.line,hl?1.6:1);
+      const cy=ty+h/2;
+      rich(lb,tx+14,cy-(hl?34:24),hl?16:14,{c:C.muted});
+      T(num,tx+14,cy+(hl?20:13),hl?44:28,{c:hl?C.cu:C.ink,w:600,fam:MONO});
+      if(unit) T(unit,tx+14,cy+(hl?50:36),hl?15:13,{c:C.muted,fam:MONO});});
   }
   { const lx0=W-PAD-wL; panel(lx0,yB,wL,hB,'圖例');
     const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ci',C.warn,null,'越過槽中心線的導線'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線']];
