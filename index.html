@@ -1345,20 +1345,12 @@ async function build(){
   panel(px,yA,wS,hA,'定子全圖',[$('sSub').textContent,fill].filter(Boolean).join(' · ')); put(iS,px,wS);
   // ---- 第三列：接線電路（只保留目前選擇的接線）＋圖例 ----
   { const on=conn==='Y', im=on?iY:iD, id=on?'cvY':'cvD';
-    const wC=wA; panel(PAD,yB,wC,hB,'接線電路',on?'Y 星形':'Δ 三角形');
+    const wC=im.w+76; panel(PAD,yB,wC,hB,'接線電路',on?'Y 星形':'Δ 三角形');
     const cy0=yB+44, ch=hB-44-18;
-    cad(PAD+18,cy0,im.w+40,ch); x.drawImage(im.im,PAD+38,cy0+(ch-im.h)/2,im.w,im.h);
-    const sp=[...$(id).children], L=PAD+18+im.w+40+28, R=PAD+wC-22, n=sp.length/2;
-    let ry=cy0+(ch-(n-1)*36)/2+6;
-    for(let j=0;j<sp.length;j+=2){
-      const hl=sp[j+1].classList.contains('hl');
-      rich(sp[j].innerHTML,L,ry,15.5,{c:hl?C.ink:C.muted,w:hl?700:400});
-      rich(sp[j+1].innerHTML,R,ry,hl?20:16,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
-      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ry+13.5);x.lineTo(R,ry+13.5);x.stroke();
-      ry+=36;}
+    cad(PAD+18,cy0,wC-36,ch); x.drawImage(im.im,PAD+(wC-im.w)/2,cy0+(ch-im.h)/2,im.w,im.h);
   }
   // 計算結果（2 列 × 3 欄）
-  const wL=320, kx0=PAD+wA+GAP, wK=W-PAD-wL-GAP-kx0;
+  const wL=320, kx0=PAD+iY.w+76+GAP, wK=W-PAD-wL-GAP-kx0;
   { panel(kx0,yB,wK,hB,'計算結果');
     const K=[['端子間電阻 R<sub>LL</sub>','kRLL',1],['工作溫度 R<sub>LL</sub>','kRLLop'],['每相 R<sub>ph</sub>','kRph'],['平均匝長 MLT','kMLT'],['每線圈線長','kLen']];
     const cols=3, gx=12, tw=(wK-36-gx*(cols-1))/cols, th=(hB-44-18-gx)/2;
