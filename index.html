@@ -314,9 +314,6 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="i"><span class="tx">絕緣厚 i</span><button class="info" data-k="i" type="button">?</button><span class="u">mm</span></label><input id="i" type="number" step="0.01" min="0" value="0.3"></div>
       <div class="f"><label class="lab" for="r0"><span class="tx">側視轉角 r<sub>0</sub></span><button class="info" data-k="r0" type="button">?</button><span class="u">mm</span></label><input id="r0" type="number" step="0.05" min="0" value="0.5"></div>
       <div class="f"><label class="lab" for="rf"><span class="tx">槽內 R 角 r<sub>f</sub></span><button class="info" data-k="rf" type="button">?</button><span class="u">mm</span></label><input id="rf" type="number" step="0.05" min="0" value="0.5"></div>
-      <div class="f"><label class="lab" for="tmax"><span class="tx">可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
-      <div class="f"><label class="lab" for="hup"><span class="tx">上方高度限制 H<sub>上</sub></span><button class="info" data-k="hup" type="button">?</button><span class="u">mm</span></label><input id="hup" type="number" step="0.05" min="0" value="0"></div>
-      <div class="f"><label class="lab" for="hdn"><span class="tx">下方高度限制 H<sub>下</sub></span><button class="info" data-k="hdn" type="button">?</button><span class="u">mm</span></label><input id="hdn" type="number" step="0.05" min="0" value="0"></div>
     </div>
   </section>
 
@@ -330,6 +327,9 @@ input,select{font-size:1rem;padding:8px 10px}
       <div class="f"><label class="lab" for="g"><span class="tx">鬆散係數 g</span><button class="info" data-k="g" type="button">?</button></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
       <div class="f full srow" hidden><span class="lab"><span class="tx">排線方式</span><button class="info" data-k="pat" type="button">?</button></span>
         <div class="seg" role="group" aria-label="排線方式"><button type="button" id="pSq" aria-pressed="true">整齊方格</button><button type="button" id="pOr" aria-pressed="false">正交嵌入</button></div></div>
+      <div class="f"><label class="lab" for="tmax"><span class="tx">可用厚度上限</span><button class="info" data-k="tmax" type="button">?</button><span class="u">mm</span></label><input id="tmax" type="number" step="0.1" min="0" value="2.5"></div>
+      <div class="f"><label class="lab" for="hup"><span class="tx">上方高度限制 H<sub>上</sub></span><button class="info" data-k="hup" type="button">?</button><span class="u">mm</span></label><input id="hup" type="number" step="0.05" min="0" value="0"></div>
+      <div class="f"><label class="lab" for="hdn"><span class="tx">下方高度限制 H<sub>下</sub></span><button class="info" data-k="hdn" type="button">?</button><span class="u">mm</span></label><input id="hdn" type="number" step="0.05" min="0" value="0"></div>
     </div>
   </section>
 
@@ -1345,13 +1345,13 @@ async function build(){
     steel:V('steel'),sf:V('steel-fill'),ins:V('ins'),warn:V('warn'),ok:V('ok'),grid:V('grid')};
   // ---- 版面（仿使用者提供的配置）：左 計算結果｜中 槽空間排線圖｜右上 定子全圖、右下 接線電路＋圖例 ----
   const H=1040, yM=108, hM=H-yM-58, wL=340, wR=580, wC=W-2*PAD-2*GAP-wL-wR, hBot=300, hS=hM-GAP-hBot;
-  const vA=cropVB($('svgA')), vS=cropVB($('svgS'));
+  const vB=cropVB($('svgB')), vS=cropVB($('svgS'));
   const asp=(sv,v)=>{v=v||(sv.dataset.base||sv.getAttribute('viewBox')).split(/\s+/).map(Number);return v[3]/v[2];};
   const fitW=(sv,bw,bh,v)=>Math.min(bw,bh/asp(sv,v));
   const csv=conn==='Y'?$('svgY'):$('svgD'), cwB=(wR-GAP)/2;
   let imgs;
   try{
-    imgs=await Promise.all([svgImage($('svgA'),fitW($('svgA'),wR-56,hS-80,vA),vA,1),svgImage(csv,fitW(csv,cwB-44,hBot-74)),svgImage($('svgS'),fitW($('svgS'),wC-56,hM-80,vS),vS,1)]);
+    imgs=await Promise.all([svgImage($('svgB'),fitW($('svgB'),wR-56,hS-80,vB),vB,1),svgImage(csv,fitW(csv,cwB-44,hBot-74)),svgImage($('svgS'),fitW($('svgS'),wC-56,hM-80,vS),vS,1)]);
   }finally{
     if(prevT===null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevT);
     foc.forEach(e=>e.classList.add('dimfocus')); hot.forEach(e=>e.classList.add('hot')); noT.remove();
@@ -1423,19 +1423,20 @@ async function build(){
   const xR=xC+wC+GAP;
   let fill=''; for(const tr of $('sTbl').rows){const t=tr.textContent; if(/槽滿率/.test(t)&&tr.cells[1]){const c=tr.cells[1].cloneNode(true);c.querySelector('.chip')?.remove();fill='槽滿率 '+c.textContent.trim();}}
   panel(xC,yM,wC,hM,'定子全圖',[$('sSub').textContent,fill].filter(Boolean).join(' · ')); box(iS,xC,yM,wC,hM);
-  panel(xR,yM,wR,hS,'槽空間排線圖'); box(iA,xR,yM,wR,hS);
+  panel(xR,yM,wR,hS,'側視圖'); box(iA,xR,yM,wR,hS);
   // 右下：接線電路（目前選擇的接線）＋圖例
   const yBt=yM+hS+GAP;
   panel(xR,yBt,cwB,hBot,'接線電路',conn==='Y'?'Y 星形':'Δ 三角形'); box(iC,xR,yBt,cwB,hBot);
   { const lx0=xR+cwB+GAP, wLg=wR-cwB-GAP; panel(lx0,yBt,wLg,hBot,'圖例');
-    const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替）'],['ci',C.warn,null,'越過槽中心線導線'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線']];
+    const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替）'],['ci',C.warn,null,'越過槽中心線導線'],['ds',null,C.ink,'平均匝路徑'],['ln',C.ok,C.warn,'高度限制（綠 OK／紅 超出）']];
     const step=(hBot-44-12)/lg.length;
     lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+18, ly=yBt+44+step*(li+.5)+5;
       if(k==='sq') rr(lx,ly-12,14,14,2,f1,f2);
       else if(k==='cu'){rr(lx,ly-12,14,14,2,f1);rr(lx+10,ly-12,14,14,2,f2);}
       else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-12,14,14,2,null,f2,1.5);x.setLineDash([]);}
+      else if(k==='ln'){x.setLineDash([4,2]);x.lineWidth=2;x.strokeStyle=f1;x.beginPath();x.moveTo(lx,ly-9);x.lineTo(lx+22,ly-9);x.stroke();x.strokeStyle=f2;x.beginPath();x.moveTo(lx,ly-2);x.lineTo(lx+22,ly-2);x.stroke();x.setLineDash([]);}
       else {x.beginPath();x.arc(lx+7,ly-5,7,0,7);x.fillStyle=f1;x.fill();}
-      T(t,lx+32,ly,15,{c:C.ink});});
+      T(t,lx+32,ly,k==='ln'?13.5:15,{c:C.ink});});
   }
   // ---- 頁尾 ----
   T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
