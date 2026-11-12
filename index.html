@@ -8,7 +8,7 @@
 <link rel="icon" href="logo.svg?v=r5" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png?v=r5">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 /* Layout: 頁首（工具切換＋明暗）→ 左欄輸入、右欄（結果數字→兩張即時 CAD 視圖→明細與逐層表）；窄螢幕單欄 */
 :root{
@@ -281,6 +281,80 @@ input,select{font-size:1rem;padding:8px 10px}
 .inputs{gap:8px}
 .inputs .pmsg:empty{display:none}
 .inputs .prow input[type=text]{min-width:120px}
+
+/* ===================== 專業技術工程風格（覆寫層） =====================
+   概念：製圖紙＋圖框標題欄。中性石墨灰、工程藍為結構色、銅色只留給電阻結果與導線；
+   直角細線框、無陰影、等寬數值、編號式區段標題。 */
+:root{
+  --bg:#e6e9ec; --panel:#ffffff; --sunk:#f3f5f7; --ink:#14191e; --muted:#58646e; --line:#c3cbd2; --line-2:#9aa6b0;
+  --acc:#1f4e79; --acc-2:#2d6aa3; --acc-soft:#e3ecf5; --grid:#e3e7eb; --shadow:none; --r:2px;
+  --f-body:"IBM Plex Sans","Noto Sans TC",system-ui,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-mono:"IBM Plex Mono","JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1114; --panel:#151b20; --sunk:#10151a; --ink:#e4e9ed; --muted:#8e9ba5; --line:#2a333b; --line-2:#3d4852;
+  --acc:#6fa8dc; --acc-2:#8bbbe6; --acc-soft:#1a2a3a; --grid:#182027; --on-accent:#0d1114;
+}
+body{background-color:var(--bg);background-image:
+  linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:24px 24px;background-attachment:fixed;font-feature-settings:"tnum"}
+/* 頁首：圖框標題欄 */
+.mtabs{border-bottom:1px solid var(--line-2);margin-bottom:14px}
+.mtabs button{font-size:.9rem;letter-spacing:.06em;padding:9px 18px 8px;border-bottom-width:2px}
+.mtabs button[aria-selected="true"]{color:var(--acc);border-bottom-color:var(--acc)}
+header.top{background:var(--panel);border:1px solid var(--line-2);border-top:3px solid var(--ink);border-radius:var(--r);padding:10px 14px}
+header.top h1{font-size:1.4rem;letter-spacing:.04em}
+h1.title .brand{width:34px;height:34px}
+h1.title span::after{content:"WINDING RESISTANCE";display:block;font:500 .62rem/1.2 var(--f-mono);letter-spacing:.22em;color:var(--muted);margin-top:2px}
+.hpreset{border-left:1px solid var(--line);padding-left:16px}
+.hp-lab{font-size:.8rem;letter-spacing:.08em}
+.hp-lab small{font-family:var(--f-mono);letter-spacing:.02em}
+.hp-row select,.hp-row input[type=text],.btn,.themebtn,#pngBtn{border-radius:var(--r)}
+.themebtn{width:34px;height:34px}
+.btn{border-color:var(--line-2);font-size:.82rem;letter-spacing:.02em}
+.btn:hover{border-color:var(--acc);color:var(--acc)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+:root[data-theme="dark"] .btn.pri{color:var(--on-accent)}
+.btn.pri:hover{background:var(--acc-2);border-color:var(--acc-2);color:#fff}
+/* 面板：直角、細線、無陰影 */
+section.step,.card{border-radius:var(--r);border-color:var(--line-2);box-shadow:none}
+.card.kpis{box-shadow:none;border-top:3px solid var(--ink)}
+section.step{padding:10px 14px 14px;position:relative}
+.step h2{font-size:.86rem!important;letter-spacing:.08em;font-weight:700;padding-bottom:7px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.step h2 .n{border:0;border-radius:0;background:var(--ink);color:var(--panel);font-size:.72rem;padding:1px 6px;letter-spacing:0}
+.step h2 .n::before{content:"0"}
+.card h3,.view h3{font-size:.86rem;letter-spacing:.08em;font-weight:700}
+.card h3{padding-bottom:7px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.view h3>span:first-child,.card>h3:first-child{display:flex;align-items:center;gap:8px}
+.view h3>span:first-child::before,.card>h3:first-child::before{content:"";width:3px;height:.95em;background:var(--acc);display:inline-block}
+/* 輸入欄：工程表單 */
+.lab{letter-spacing:.02em}
+input,select{border-radius:var(--r);border-color:var(--line);background:var(--sunk)}
+input:hover{border-color:var(--line-2)}
+input:focus,select:focus{outline:0;border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft);background:var(--panel)}
+:focus-visible{outline-color:var(--acc)}
+.lab .info,.info{border-color:var(--line-2);color:var(--muted)}
+.info:hover,.info[aria-expanded="true"]{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
+.f.hot input{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.f.hot .lab .tx{color:var(--acc)}
+/* 結果讀數 */
+.kpis{background:var(--line)}
+.eyebrow{text-transform:none;letter-spacing:.06em;font-size:.72rem}
+.big{font-weight:600;letter-spacing:-.01em}
+.big small{letter-spacing:.02em}
+/* 圖面：製圖框 */
+.cad{border-radius:0;border-color:var(--line-2);box-shadow:inset 0 0 0 3px var(--panel),inset 0 0 0 4px var(--line)}
+.zbar{border-radius:var(--r)}
+.legend{font-size:.76rem;letter-spacing:.02em}
+/* 表格與標籤 */
+.k td,.lt td,.lt th{font-variant-numeric:tabular-nums}
+.lt th{letter-spacing:.06em;font-size:.74rem}
+.chip{border-radius:var(--r)}
+.cbox{border-radius:var(--r)}
+.cbox[aria-pressed="true"]{border-color:var(--acc);box-shadow:inset 0 3px 0 var(--acc)}
+.msgs li{border-radius:var(--r)}
+#pop{border-radius:var(--r);border-color:var(--line-2)}
+#toast{border-radius:var(--r);font-family:var(--f-body);letter-spacing:.02em}
 </style>
 </head>
 <body>
