@@ -1303,8 +1303,8 @@ async function build(){
   const BODY='"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif', MONO='"JetBrains Mono",Consolas,Menlo,monospace';
   await document.fonts.ready;
   // ---- 版面：結果數字 → 三張圖（槽空間、側視、定子全圖）→ 接線電路＋圖例 ----
-  const yK=104, hK=104, yA=yK+hK+GAP, hA=44+Math.max(iA.h,iB.h,iS.h)+18;
-  const yB=yA+hA+GAP, hB=44+iY.h+40, H=yB+hB+PAD+30;
+  const yK=104, yA=yK, hA=44+Math.max(iA.h,iB.h,iS.h)+18;
+  const yB=yA+hA+GAP, hB=Math.max(44+iY.h+40,300), H=yB+hB+PAD+30;
   let x;
   const cv=document.createElement('canvas'); cv.width=W*SC; cv.height=H*SC;
   x=cv.getContext('2d'); x.scale(SC,SC); x.textBaseline='alphabetic';
@@ -1332,16 +1332,6 @@ async function build(){
   const now=new Date(), ds=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
   T(`接線 ${conn==='Y'?'Y 星形':'Δ 三角形'}　·　${ds}`,W-PAD,PAD+35,15,{c:C.muted,al:'right'});
   x.fillStyle=C.cu; x.fillRect(PAD,yK-14,W-2*PAD,3);
-  // ---- KPI ----
-  const K=[['端子間電阻 R<sub>LL</sub>','kRLL',1],['工作溫度 R<sub>LL</sub>','kRLLop'],['每相 R<sub>ph</sub>','kRph'],['平均匝長 MLT','kMLT'],['每線圈線長','kLen']];
-  const kw=(W-2*PAD)/K.length;
-  rr(PAD,yK,W-2*PAD,hK,10,C.panel,C.line);
-  K.forEach(([lb,id,hl],i)=>{const kx=PAD+i*kw;
-    if(i){x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(kx+.5,yK+16);x.lineTo(kx+.5,yK+hK-16);x.stroke();}
-    const el=$(id), sm=el.querySelector('small'), num=(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim();
-    rich(lb,kx+22,yK+30,15,{c:C.muted});
-    T(num,kx+22,yK+70,34,{c:hl?C.cu:C.ink,w:600,fam:MONO});
-    if(sm) T(sm.textContent.trim(),kx+22,yK+92,14,{c:C.muted,fam:MONO});});
   // ---- 第二列：槽空間排線圖、側視圖、定子全圖 ----
   const free=W-2*PAD-2*GAP-3*36-iA.w-iB.w-iS.w, ex=free/3;
   const wA=iA.w+36+ex, wB=iB.w+36+ex, wS=W-2*PAD-2*GAP-wA-wB;
@@ -1367,15 +1357,29 @@ async function build(){
       x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ry+13.5);x.lineTo(R,ry+13.5);x.stroke();
       ry+=36;}
   }
-  { const lx0=PAD+wA+GAP, wL=W-PAD-lx0; panel(lx0,yB,wL,hB,'圖例');
+  // 計算結果（2 列 × 3 欄）
+  const wL=320, kx0=PAD+wA+GAP, wK=W-PAD-wL-GAP-kx0;
+  { panel(kx0,yB,wK,hB,'計算結果');
+    const K=[['端子間電阻 R<sub>LL</sub>','kRLL',1],['工作溫度 R<sub>LL</sub>','kRLLop'],['每相 R<sub>ph</sub>','kRph'],['平均匝長 MLT','kMLT'],['每線圈線長','kLen']];
+    const cols=3, gx=12, tw=(wK-36-gx*(cols-1))/cols, th=(hB-44-18-gx)/2;
+    K.forEach(([lb,id,hl],i)=>{const ci=i?1+(i-1)%2:0, ri=i?Math.floor((i-1)/2):0;
+      const tx=kx0+18+ci*(tw+gx), ty=yB+44+ri*(th+gx), h=i?th:2*th+gx;
+      rr(tx,ty,tw,h,8,hl?C.panel:C.sunk,hl?C.cu:C.line,hl?1.6:1);
+      const el=$(id), sm=el.querySelector('small'), num=(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim();
+      const cy=ty+h/2, big=hl?44:32;
+      rich(lb,tx+16,cy-(hl?34:24),hl?16:14.5,{c:C.muted});
+      T(num,tx+16,cy+(hl?20:14),big,{c:hl?C.cu:C.ink,w:600,fam:MONO});
+      if(sm) T(sm.textContent.trim(),tx+16,cy+(hl?50:38),hl?15:13.5,{c:C.muted,fam:MONO});});
+  }
+  { const lx0=W-PAD-wL; panel(lx0,yB,wL,hB,'圖例');
     const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ci',C.warn,null,'越過槽中心線的導線'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線']];
-    const cols=2, rows=Math.ceil(lg.length/cols), colW=(wL-44)/cols, step=(hB-44-22)/rows;
-    lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+22+Math.floor(li/rows)*colW, ly=yB+44+step*(li%rows+.5)+6;
-      if(k==='sq') rr(lx,ly-13,16,16,2,f1,f2);
-      else if(k==='cu'){rr(lx,ly-13,16,16,2,f1);rr(lx+11,ly-13,16,16,2,f2);}
-      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-13,16,16,2,null,f2,1.6);x.setLineDash([]);}
-      else {x.beginPath();x.arc(lx+8,ly-5,8,0,7);x.fillStyle=f1;x.fill();}
-      T(t,lx+40,ly,16,{c:C.ink});});
+    const step=(hB-44-14)/lg.length;
+    lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+20, ly=yB+44+step*(li+.5)+5;
+      if(k==='sq') rr(lx,ly-12,14,14,2,f1,f2);
+      else if(k==='cu'){rr(lx,ly-12,14,14,2,f1);rr(lx+10,ly-12,14,14,2,f2);}
+      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-12,14,14,2,null,f2,1.5);x.setLineDash([]);}
+      else {x.beginPath();x.arc(lx+7,ly-5,7,0,7);x.fillStyle=f1;x.fill();}
+      T(t,lx+34,ly,14.5,{c:C.ink});});
   }
   // ---- 頁尾 ----
   T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
