@@ -1294,7 +1294,7 @@ async function build(){
     steel:V('steel'),sf:V('steel-fill'),ins:V('ins'),warn:V('warn'),ok:V('ok'),grid:V('grid')};
   let imgs;
   try{
-    imgs=await Promise.all([svgImage($('svgA'),660),svgImage($('svgB'),448),svgImage($('svgY'),230),svgImage($('svgD'),230),svgImage($('svgS'),495)]);
+    imgs=await Promise.all([svgImage($('svgA'),660),svgImage($('svgB'),448),svgImage($('svgY'),260),svgImage($('svgD'),260),svgImage($('svgS'),495)]);
   }finally{
     if(prevT===null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevT);
     foc.forEach(e=>e.classList.add('dimfocus')); hot.forEach(e=>e.classList.add('hot')); noT.remove();
@@ -1304,7 +1304,7 @@ async function build(){
   await document.fonts.ready;
   // ---- 版面：結果數字 → 三張圖（槽空間、側視、定子全圖）→ 接線電路＋圖例 ----
   const yK=104, hK=104, yA=yK+hK+GAP, hA=44+Math.max(iA.h,iB.h,iS.h)+18;
-  const yB=yA+hA+GAP, hB=44+iY.h+20, H=yB+hB+PAD+30;
+  const yB=yA+hA+GAP, hB=44+iY.h+40, H=yB+hB+PAD+30;
   let x;
   const cv=document.createElement('canvas'); cv.width=W*SC; cv.height=H*SC;
   x=cv.getContext('2d'); x.scale(SC,SC); x.textBaseline='alphabetic';
@@ -1353,34 +1353,29 @@ async function build(){
   px+=wB+GAP;
   let fill=''; for(const tr of $('sTbl').rows){const t=tr.textContent; if(/槽滿率/.test(t)&&tr.cells[1]){const c=tr.cells[1].cloneNode(true);c.querySelector('.chip')?.remove();fill='槽滿率 '+c.textContent.trim();}}
   panel(px,yA,wS,hA,'定子全圖',[$('sSub').textContent,fill].filter(Boolean).join(' · ')); put(iS,px,wS);
-  // ---- 第三列：接線電路（左右兩張）＋圖例 ----
-  const wL=372, wC=W-2*PAD-GAP-wL;
-  panel(PAD,yB,wC,hB,'接線電路');
-  const cw=(wC-36-16)/2, chH=hB-44-18;
-  [['Y 星形',iY,'cvY',conn==='Y'],['Δ 三角形',iD,'cvD',conn==='D']].forEach(([tt,im,id,on],i)=>{
-    const bx=PAD+18+i*(cw+16), by=yB+44;
-    x.save(); if(!on) x.globalAlpha=.5;
-    rr(bx,by,cw,chH,8,on?C.panel:C.sunk,on?C.cu:C.line,on?1.8:1.2);
-    T(tt,bx+16,by+30,17,{w:700});
-    x.drawImage(im.im,bx+64,by+(chH-im.h)/2+8,im.w,im.h);
-    const sp=[...$(id).children], L=bx+im.w+100, R=bx+cw-22, n=sp.length/2;
-    let ry=by+(chH-(n-1)*34)/2+6;
+  // ---- 第三列：接線電路（只保留目前選擇的接線）＋圖例 ----
+  { const on=conn==='Y', im=on?iY:iD, id=on?'cvY':'cvD';
+    const wC=wA; panel(PAD,yB,wC,hB,'接線電路',on?'Y 星形':'Δ 三角形');
+    const cy0=yB+44, ch=hB-44-18;
+    cad(PAD+18,cy0,im.w+40,ch); x.drawImage(im.im,PAD+38,cy0+(ch-im.h)/2,im.w,im.h);
+    const sp=[...$(id).children], L=PAD+18+im.w+40+28, R=PAD+wC-22, n=sp.length/2;
+    let ry=cy0+(ch-(n-1)*36)/2+6;
     for(let j=0;j<sp.length;j+=2){
-      rich(sp[j].innerHTML,L,ry,15,{c:C.muted});
       const hl=sp[j+1].classList.contains('hl');
-      rich(sp[j+1].innerHTML,R,ry,hl?18:15.5,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
-      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ry+12.5);x.lineTo(R,ry+12.5);x.stroke();
-      ry+=34;}
-    x.restore();});
-  { const lx0=W-PAD-wL; panel(lx0,yB,wL,hB,'圖例');
-    const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線'],['ci',C.warn,null,'越過槽中心線的導線']];
-    const step=(hB-44-22)/lg.length;
-    lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+22, ly=yB+44+step*(li+.5)+6;
-      if(k==='sq') rr(lx,ly-12,14,14,2,f1,f2);
-      else if(k==='cu'){rr(lx,ly-12,14,14,2,f1);rr(lx+10,ly-12,14,14,2,f2);}
-      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-12,14,14,2,null,f2,1.5);x.setLineDash([]);}
-      else {x.beginPath();x.arc(lx+7,ly-5,7,0,7);x.fillStyle=f1;x.fill();}
-      T(t,lx+36,ly,15,{c:C.muted});});
+      rich(sp[j].innerHTML,L,ry,15.5,{c:hl?C.ink:C.muted,w:hl?700:400});
+      rich(sp[j+1].innerHTML,R,ry,hl?20:16,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
+      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ry+13.5);x.lineTo(R,ry+13.5);x.stroke();
+      ry+=36;}
+  }
+  { const lx0=PAD+wA+GAP, wL=W-PAD-lx0; panel(lx0,yB,wL,hB,'圖例');
+    const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ci',C.warn,null,'越過槽中心線的導線'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線']];
+    const cols=2, rows=Math.ceil(lg.length/cols), colW=(wL-44)/cols, step=(hB-44-22)/rows;
+    lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+22+Math.floor(li/rows)*colW, ly=yB+44+step*(li%rows+.5)+6;
+      if(k==='sq') rr(lx,ly-13,16,16,2,f1,f2);
+      else if(k==='cu'){rr(lx,ly-13,16,16,2,f1);rr(lx+11,ly-13,16,16,2,f2);}
+      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-13,16,16,2,null,f2,1.6);x.setLineDash([]);}
+      else {x.beginPath();x.arc(lx+8,ly-5,8,0,7);x.fillStyle=f1;x.fill();}
+      T(t,lx+40,ly,16,{c:C.ink});});
   }
   // ---- 頁尾 ----
   T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
