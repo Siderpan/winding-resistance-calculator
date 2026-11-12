@@ -1043,9 +1043,10 @@ $('boxD').addEventListener('click',()=>$('cD').click());
 /* 側視圖：每層匝路徑為等距圓角矩形 */
 function drawB(R){
   const {p,layers,t,Lp,bp,r0}=R, svg=$('svgB');
-  const W=380, Xh=bp/2+t, oh=p.i+t, Yh=Math.max(Lp/2+t,p.L/2+p.hup,p.L/2+p.hdn);
-  const s=Math.min((W-(p.hup>0||p.hdn>0?250:200))/(2*Xh),330/(2*Yh));
-  const cx=W/2+(p.hup>0||p.hdn>0?-8:10), top=32, cy=top+Yh*s;
+  const Xh=bp/2+t, oh=p.i+t, Yh=Math.max(Lp/2+t,p.L/2+p.hup,p.L/2+p.hdn), hl=p.hup>0||p.hdn>0;
+  // 先依高度決定比例，再加寬畫布容納左右標註，讓圖形盡量放大
+  const s=Math.min(330/(2*Yh),420/(2*Xh)), W=Math.max(380,Math.ceil(2*Xh*s+(hl?260:210)));
+  const cx=W/2+(hl?-8:10), top=32, cy=top+Yh*s;
   const H=Math.ceil(cy+Yh*s+52);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   let g=DEFS;
@@ -1390,11 +1391,11 @@ async function build(){
   // 左：計算結果（規格表格式：項目｜數值｜單位，同級字體一致）
   { const px=PAD, R=lastR, P=R.p; panel(px,yM,wL,hM,'計算結果');
     const num=id=>{const el=$(id);return (el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim();};
-    const bx=px+18, bw=wL-36, xu=bx+bw-34, xv=xu-10;
+    const bx=px+18, bw=wL-36, xu=bx+bw-30, xv=xu-10;
     // 主結果
     const by=yM+50, bh=128;
     rr(bx,by,bw,bh,8,C.panel,C.cu,1.6);
-    rich('端子間電阻 R<sub>LL</sub>',bx+16,by+30,15,{c:C.muted});
+    rich('端子間電阻 R<sub>LL</sub>',bx+16,by+30,17,{c:C.ink,w:500});
     T((conn==='Y'?'Y 接':'Δ 接')+' · '+P.Tref+' °C',bx+bw-16,by+30,15,{c:C.muted,al:'right'});
     T(num('kRLL'),bx+16,by+96,46,{c:C.cu,w:700,fam:MONO});
     T('Ω',bx+bw-16,by+96,20,{c:C.muted,fam:MONO,al:'right'});
@@ -1405,14 +1406,14 @@ async function build(){
     const nRows=G.reduce((a,g)=>a+g[1].length,0), y0=by+bh+22, rh=Math.min(60,(yM+hM-14-y0-G.length*40)/nRows);
     let y=y0;
     for(const [gt,rows] of G){
-      T(gt,bx,y+16,14,{c:C.cu,w:700});
+      T(gt,bx,y+16,16,{c:C.cu,w:700});
       x.strokeStyle=C.cu;x.globalAlpha=.35;x.lineWidth=1;x.beginPath();x.moveTo(bx,y+26.5);x.lineTo(bx+bw,y+26.5);x.stroke();x.globalAlpha=1;
       y+=40;
       rows.forEach(([lb,cond,v,u],i)=>{const base=y+rh/2+5;
-        const lw=rich(lb,bx,base,15,{c:C.ink});
-        if(cond) T(cond,bx+lw+8,base,12.5,{c:C.muted});
-        T(v,xv,base,17,{w:600,fam:MONO,al:'right'});
-        T(u,xu,base,13,{c:C.muted,fam:MONO});
+        const lw=rich(lb,bx,base,17,{c:C.ink,w:500});
+        if(cond) T(cond,bx+lw+8,base,14,{c:C.muted});
+        T(v,xv,base,21,{w:700,fam:MONO,al:'right'});
+        T(u,xu,base,15,{c:C.muted,fam:MONO});
         if(i<rows.length-1){x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(bx,y+rh+.5);x.lineTo(bx+bw,y+rh+.5);x.stroke();}
         y+=rh;});
       y+=10;
