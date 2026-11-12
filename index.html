@@ -1294,7 +1294,7 @@ async function build(){
     steel:V('steel'),sf:V('steel-fill'),ins:V('ins'),warn:V('warn'),ok:V('ok'),grid:V('grid')};
   let imgs;
   try{
-    imgs=await Promise.all([svgImage($('svgA'),652),svgImage($('svgB'),428),svgImage($('svgY'),236),svgImage($('svgD'),236),svgImage($('svgS'),560)]);
+    imgs=await Promise.all([svgImage($('svgA'),660),svgImage($('svgB'),448),svgImage($('svgY'),230),svgImage($('svgD'),230),svgImage($('svgS'),495)]);
   }finally{
     if(prevT===null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevT);
     foc.forEach(e=>e.classList.add('dimfocus')); hot.forEach(e=>e.classList.add('hot')); noT.remove();
@@ -1302,15 +1302,10 @@ async function build(){
   const [iA,iB,iY,iD,iS]=imgs;
   const BODY='"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif', MONO='"JetBrains Mono",Consolas,Menlo,monospace';
   await document.fonts.ready;
-  // ---- 版面 ----
-  const LG=4*26+30, yK=104, hK=104, yA=yK+hK+GAP, hA=44+Math.max(iA.h,iB.h+LG)+18;
-  // 定子數據欄所需高度（含提示訊息換行）
-  const msgs=[...$('sMsgs').children,...$('msgs').querySelectorAll('li.warn')].map(li=>li.textContent.trim()).filter(Boolean);
-  const wT=520, wrap=(t,mw)=>{x.font=`400 13.5px ${BODY}`;const out=[];let line='';for(const ch of t){if(x.measureText(line+ch).width>mw&&line){out.push(line);line='';}line+=ch;}if(line)out.push(line);return out;};
-  let x=document.createElement('canvas').getContext('2d');
-  const mLines=msgs.map(m=>wrap(m,wT-50));
-  const tRows=[...$('sTbl').rows], tblH=60+tRows.reduce((a,r)=>a+(r.classList.contains('grp')?30:(r.cells[1]?34:0)),0)+(msgs.length?18+mLines.reduce((a,l)=>a+l.length*20+6,0):0)+16;
-  const yB=yA+hA+GAP, hB=Math.max(44+iS.h+20,tblH), H=yB+hB+PAD+30;
+  // ---- 版面：結果數字 → 三張圖（槽空間、側視、定子全圖）→ 接線電路＋圖例 ----
+  const yK=104, hK=104, yA=yK+hK+GAP, hA=44+Math.max(iA.h,iB.h,iS.h)+18;
+  const yB=yA+hA+GAP, hB=44+iY.h+20, H=yB+hB+PAD+30;
+  let x;
   const cv=document.createElement('canvas'); cv.width=W*SC; cv.height=H*SC;
   x=cv.getContext('2d'); x.scale(SC,SC); x.textBaseline='alphabetic';
   const F=(sz,wt=400,fam=BODY)=>x.font=`${wt} ${sz}px ${fam}`;
@@ -1347,80 +1342,45 @@ async function build(){
     rich(lb,kx+22,yK+30,15,{c:C.muted});
     T(num,kx+22,yK+70,34,{c:hl?C.cu:C.ink,w:600,fam:MONO});
     if(sm) T(sm.textContent.trim(),kx+22,yK+92,14,{c:C.muted,fam:MONO});});
-  // ---- 第二列：槽空間排線圖、側視圖、接線電路 ----
-  const wA=iA.w+36, wB=iB.w+36, wC=W-2*PAD-wA-wB-2*GAP;
+  // ---- 第二列：槽空間排線圖、側視圖、定子全圖 ----
+  const free=W-2*PAD-2*GAP-3*36-iA.w-iB.w-iS.w, ex=free/3;
+  const wA=iA.w+36+ex, wB=iB.w+36+ex, wS=W-2*PAD-2*GAP-wA-wB;
+  const ih=Math.max(iA.h,iB.h,iS.h);
+  const put=(im,px,w)=>{const ox=px+(w-im.w)/2, oy=yA+44+(ih-im.h)/2; cad(px+18,yA+44,w-36,ih); x.drawImage(im.im,ox,oy,im.w,im.h);};
   let px=PAD;
-  panel(px,yA,wA,hA,'槽空間排線圖'); cad(px+18,yA+44,iA.w,iA.h); x.drawImage(iA.im,px+18,yA+44,iA.w,iA.h);
-  px+=wA+GAP; panel(px,yA,wB,hA,'側視圖'); cad(px+18,yA+44,iB.w,iB.h); x.drawImage(iB.im,px+18,yA+44,iB.w,iB.h);
-  // 圖例（橫跨兩張圖下方）
-  { const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線'],['ci',C.warn,null,'越過槽中心線的導線']];
-    const lx0=PAD+wA+GAP+18; let ly=yA+44+iB.h+34;
-    T('圖例',lx0,ly,13.5,{c:C.cu,w:700}); ly+=28;
-    lg.forEach(([k,f1,f2,t],li)=>{ let lx=lx0+(li>=4?(iB.w/2+10):0); const ly2=ly+(li%4)*26; ((ly)=>{
-      if(k==='sq'){rr(lx,ly-11,12,12,2,f1,f2);}
-      else if(k==='cu'){rr(lx,ly-11,12,12,2,f1);rr(lx+9,ly-11,12,12,2,f2);}
-      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-11,12,12,2,null,f2,1.5);x.setLineDash([]);}
-      else {x.beginPath();x.arc(lx+6,ly-5,6,0,7);x.fillStyle=f1;x.fill();}
-      T(t,lx+(k==='cu'?27:18)+8,ly,14,{c:C.muted});})(ly2);});
-  }
-  px+=wB+GAP; panel(px,yA,wC,hA,'接線電路');
-  const cw=(wC-36-14)/2, chH=38+Math.min(iY.w,cw-20)*iY.h/iY.w+24+5*25+4;
+  panel(px,yA,wA,hA,'槽空間排線圖'); put(iA,px,wA);
+  px+=wA+GAP; panel(px,yA,wB,hA,'側視圖'); put(iB,px,wB);
+  px+=wB+GAP;
+  let fill=''; for(const tr of $('sTbl').rows){const t=tr.textContent; if(/槽滿率/.test(t)&&tr.cells[1]){const c=tr.cells[1].cloneNode(true);c.querySelector('.chip')?.remove();fill='槽滿率 '+c.textContent.trim();}}
+  panel(px,yA,wS,hA,'定子全圖',[$('sSub').textContent,fill].filter(Boolean).join(' · ')); put(iS,px,wS);
+  // ---- 第三列：接線電路（左右兩張）＋圖例 ----
+  const wL=372, wC=W-2*PAD-GAP-wL;
+  panel(PAD,yB,wC,hB,'接線電路');
+  const cw=(wC-36-16)/2, chH=hB-44-18;
   [['Y 星形',iY,'cvY',conn==='Y'],['Δ 三角形',iD,'cvD',conn==='D']].forEach(([tt,im,id,on],i)=>{
-    const bx=px+18+i*(cw+14), by=yA+44;
-    x.save(); if(!on) x.globalAlpha=.55;
-    rr(bx,by,cw,chH,8,on?C.panel:C.sunk,on?C.cu:C.line,on?1.6:1.2);
-    T(tt,bx+14,by+28,16,{w:700});
-    const sw=Math.min(im.w,cw-20), sh=sw*im.h/im.w; x.drawImage(im.im,bx+(cw-sw)/2,by+38,sw,sh);
-    const sp=[...$(id).children]; let ry=by+38+sh+24;
+    const bx=PAD+18+i*(cw+16), by=yB+44;
+    x.save(); if(!on) x.globalAlpha=.5;
+    rr(bx,by,cw,chH,8,on?C.panel:C.sunk,on?C.cu:C.line,on?1.8:1.2);
+    T(tt,bx+16,by+30,17,{w:700});
+    x.drawImage(im.im,bx+64,by+(chH-im.h)/2+8,im.w,im.h);
+    const sp=[...$(id).children], L=bx+im.w+100, R=bx+cw-22, n=sp.length/2;
+    let ry=by+(chH-(n-1)*34)/2+6;
     for(let j=0;j<sp.length;j+=2){
-      rich(sp[j].innerHTML,bx+14,ry,13.5,{c:C.muted});
+      rich(sp[j].innerHTML,L,ry,15,{c:C.muted});
       const hl=sp[j+1].classList.contains('hl');
-      rich(sp[j+1].innerHTML,bx+cw-14,ry,14,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
-      ry+=25;}
+      rich(sp[j+1].innerHTML,R,ry,hl?18:15.5,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
+      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ry+12.5);x.lineTo(R,ry+12.5);x.stroke();
+      ry+=34;}
     x.restore();});
-  // ---- 第三列：定子全圖、定子數據、輸入參數 ----
-  px=PAD; const wS=iS.w+36;
-  panel(px,yB,wS,hB,'定子全圖',$('sSub').textContent); cad(px+18,yB+44,iS.w,iS.h); x.drawImage(iS.im,px+18,yB+44,iS.w,iS.h);
-  px+=wS+GAP;
-  panel(px,yB,wT,hB,'定子與槽數據');
-  { let ty=yB+60; const L=px+18, R=px+wT-18;
-    for(const tr of $('sTbl').rows){
-      if(tr.classList.contains('grp')){ty+=8;T(tr.textContent.trim(),L,ty+10,13.5,{c:C.cu,w:700});ty+=22;continue;}
-      const [a,b]=tr.cells; if(!b) continue;
-      const bc=b.cloneNode(true), ch=bc.querySelector('.chip'); if(ch) ch.remove();
-      const ly=ty+22; T(a.textContent.trim(),L,ly,15,{c:C.ink});
-      let rx=R;
-      if(ch){F(12.5,700);const t=ch.textContent.trim(), cw2=x.measureText(t).width+16;
-        const cc=ch.classList.contains('warn')?C.warn:ch.classList.contains('mid')?'#b7791f':C.ok;
-        rr(rx-cw2,ly-16,cw2,22,11,cc+'22',null);T(t,rx-cw2/2,ly,12.5,{c:cc,w:700,al:'center'});rx-=cw2+10;}
-      T(bc.textContent.trim(),rx,ly,15,{fam:MONO,al:'right'});
-      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ty+33.5);x.lineTo(R,ty+33.5);x.stroke();
-      ty+=34;}
-    ty+=18+14;
-    for(const ls of mLines){x.fillStyle=C.warn;x.beginPath();x.arc(L+3,ty-5,2.5,0,7);x.fill();
-      for(const l of ls){T(l,L+12,ty,13.5,{c:C.warn});ty+=20;} ty+=6;}
-  }
-  px+=wT+GAP; const wP=W-PAD-px;
-  panel(px,yB,wP,hB,'輸入參數');
-  { const rows=[];
-    document.querySelectorAll('.inputs section.step:not(.preset)').forEach(sec=>{
-      const h=sec.querySelector('h2'); const hc=h.cloneNode(true); hc.querySelector('.n')?.remove();
-      const items=[];
-      sec.querySelectorAll('.f').forEach(f=>{if(f.offsetParent===null) return;
-        const inp=f.querySelector('input:not([type=file]),select'); if(!inp) return;
-        const tx=f.querySelector('.tx'), u=f.querySelector('.u');
-        let v=inp.tagName==='SELECT'?inp.options[inp.selectedIndex]?.text||'':inp.value;
-        items.push([tx?tx.innerHTML:'',v,u?u.textContent.trim():'']);});
-      if(items.length) rows.push([hc.textContent.trim(),items]);});
-    const colW=(wP-36-24)/2; let col=0, ty=yB+60; const tot=rows.reduce((s,r)=>s+30+Math.ceil(r[1].length/2)*30,0);
-    for(const [hd,items] of rows){
-      ty+=6; T(hd,px+18,ty+10,13.5,{c:C.cu,w:700}); ty+=22;
-      items.forEach((it,j)=>{const cx=px+18+(j%2)*(colW+24), ly=ty+Math.floor(j/2)*30+20;
-        rich(it[0],cx,ly,14.5,{c:C.muted});
-        let r=cx+colW; if(it[2]){r-=T(it[2],r,ly,12.5,{c:C.muted,al:'right'})+6;}
-        T(it[1],r,ly,15,{fam:MONO,w:600,al:'right'});
-        x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(cx,ly+9.5);x.lineTo(cx+colW,ly+9.5);x.stroke();});
-      ty+=Math.ceil(items.length/2)*30+6;}
+  { const lx0=W-PAD-wL; panel(lx0,yB,wL,hB,'圖例');
+    const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線'],['ci',C.warn,null,'越過槽中心線的導線']];
+    const step=(hB-44-22)/lg.length;
+    lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+22, ly=yB+44+step*(li+.5)+6;
+      if(k==='sq') rr(lx,ly-12,14,14,2,f1,f2);
+      else if(k==='cu'){rr(lx,ly-12,14,14,2,f1);rr(lx+10,ly-12,14,14,2,f2);}
+      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-12,14,14,2,null,f2,1.5);x.setLineDash([]);}
+      else {x.beginPath();x.arc(lx+7,ly-5,7,0,7);x.fillStyle=f1;x.fill();}
+      T(t,lx+36,ly,15,{c:C.muted});});
   }
   // ---- 頁尾 ----
   T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
