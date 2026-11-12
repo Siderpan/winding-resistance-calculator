@@ -1433,11 +1433,11 @@ async function build(){
     const step=(hBot-44-12)/lg.length;
     lg.forEach(([k,f1,f2,t],li)=>{const lx=lx0+18, ly=yBt+44+step*(li+.5)+5;
       if(k==='sq') rr(lx,ly-12,14,14,2,f1,f2);
-      else if(k==='cu'){rr(lx,ly-12,14,14,2,f1);rr(lx+10,ly-12,14,14,2,f2);}
+      else if(k==='cu'){for(const [cx2,cc] of [[lx+6,f1],[lx+20,f2]]){x.beginPath();x.arc(cx2,ly-5,6,0,7);x.fillStyle=cc;x.fill();}}
       else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-12,14,14,2,null,f2,1.5);x.setLineDash([]);}
       else if(k==='ln'){x.setLineDash([4,2]);x.lineWidth=2;x.strokeStyle=f1;x.beginPath();x.moveTo(lx,ly-9);x.lineTo(lx+22,ly-9);x.stroke();x.strokeStyle=f2;x.beginPath();x.moveTo(lx,ly-2);x.lineTo(lx+22,ly-2);x.stroke();x.setLineDash([]);}
       else {x.beginPath();x.arc(lx+7,ly-5,7,0,7);x.fillStyle=f1;x.fill();}
-      T(t,lx+32,ly,k==='ln'?13.5:15,{c:C.ink});});
+      T(t,lx+36,ly,k==='ln'?13.5:15,{c:C.ink});});
   }
   // ---- 頁尾 ----
   T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
