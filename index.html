@@ -35,6 +35,10 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);fo
 header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
 header.top h1{font-size:1.65rem;margin:0;font-weight:700;text-wrap:balance}
 header.top p{margin:.3rem 0 0;color:var(--muted);max-width:66ch;font-size:.92rem}
+.hact{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+#pngBtn{display:inline-flex;gap:6px;align-items:center;border-radius:999px;padding:6px 14px}
+#pngBtn svg{width:15px;height:15px}
+#pngBtn:disabled{opacity:.6;cursor:progress}
 .theme{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--panel);padding:3px;gap:2px}
 .theme button{font:inherit;font-size:.82rem;border:0;background:transparent;color:var(--muted);padding:5px 12px;border-radius:999px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
 .theme button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
@@ -269,10 +273,13 @@ input,select{font-size:1rem;padding:8px 10px}
   <div>
     <h1 class="title"><svg class="brand" width="40" height="40" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#E2622B"/><path d="M18 12.5H35a12.5 12.5 0 0 1 0 25.0H26V49.5a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V14.5a2 2 0 0 1 2-2z" fill="#ffffff"/><path d="M28.5 37.0h9.6l11.4 14.5h-10.4z" fill="#ffffff"/><circle cx="35" cy="25" r="5.4" fill="#E2622B"/><circle cx="35" cy="25" r="2" fill="#ffffff"/><rect x="16" y="34" width="10" height="2.4" fill="#E2622B"/><rect x="16" y="39.2" width="10" height="2.4" fill="#E2622B"/><rect x="16" y="44.4" width="10" height="2.4" fill="#E2622B"/></svg><span>電阻計算</span></h1>
   </div>
+  <div class="hact">
+  <button type="button" class="btn" id="pngBtn" title="將目前結果輸出成一頁式 PNG 圖片"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><circle cx="5.5" cy="6.5" r="1.3"/><path d="M2 12l4-4 3 3 2-2 3 3"/></svg>輸出圖片</button>
   <div class="theme" role="group" aria-label="頁面明暗">
     <button type="button" data-t="light" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6 13 13M3 13l1.4-1.4M11.6 4.4 13 3"/></svg>淺色</button>
     <button type="button" data-t="dark" aria-pressed="false"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M13.5 10.2A6 6 0 0 1 5.8 2.5a6 6 0 1 0 7.7 7.7z"/></svg>深色</button>
     <button type="button" data-t="auto" aria-pressed="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="9" rx="1"/><path d="M5 14h6"/></svg>系統</button>
+  </div>
   </div>
 </header>
 
@@ -1257,6 +1264,180 @@ document.querySelectorAll('.inputs .f').forEach(fd=>{
 });
 applyMotor();
 if(location.hash==='#inner'){motor='out';setMotor('in');} else run();
+
+/* ===== 輸出一頁式 PNG ===== */
+(()=>{
+const W=1800, PAD=28, GAP=16, SC=2;
+const STY=['fill','fill-opacity','fill-rule','stroke','stroke-width','stroke-dasharray','stroke-dashoffset','stroke-linecap','stroke-linejoin','stroke-opacity','opacity','font-size','font-weight','font-family','font-style','text-anchor','dominant-baseline','baseline-shift','letter-spacing','visibility','display','paint-order'];
+const dec=h=>{const t=document.createElement('textarea');t.innerHTML=h;return t.value;};
+function svgImage(svg,w){
+  const vb=(svg.dataset.base||svg.getAttribute('viewBox')).split(/\s+/).map(Number);
+  const h=w*vb[3]/vb[2];
+  const cl=svg.cloneNode(true), a=[svg,...svg.querySelectorAll('*')], b=[cl,...cl.querySelectorAll('*')];
+  a.forEach((el,i)=>{const cs=getComputedStyle(el);let st='';
+    for(const k of STY){const v=cs.getPropertyValue(k);if(v) st+=k+':'+v+';';}
+    b[i].setAttribute('style',st); b[i].removeAttribute('class');});
+  cl.setAttribute('xmlns','http://www.w3.org/2000/svg');
+  cl.setAttribute('viewBox',vb.join(' ')); cl.setAttribute('width',w); cl.setAttribute('height',h);
+  cl.style.removeProperty('width'); cl.style.removeProperty('height');
+  const xml=new XMLSerializer().serializeToString(cl);
+  return new Promise((ok,no)=>{const im=new Image();im.onload=()=>ok({im,w,h});im.onerror=no;
+    im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);});
+}
+async function build(){
+  const root=document.documentElement, prevT=root.getAttribute('data-theme');
+  const foc=[...document.querySelectorAll('.cad.dimfocus')], hot=[...document.querySelectorAll('.cad .dim.hot')];
+  const noT=document.createElement('style'); noT.textContent='*,*::before,*::after{transition:none!important;animation:none!important}'; document.head.appendChild(noT);
+  root.setAttribute('data-theme','light'); foc.forEach(e=>e.classList.remove('dimfocus')); hot.forEach(e=>e.classList.remove('hot'));
+  const V=k=>getComputedStyle(root).getPropertyValue('--'+k).trim();
+  const C={bg:'#eef1f3',panel:'#ffffff',sunk:V('sunk'),ink:V('ink'),muted:V('muted'),line:V('line'),cu:V('copper'),cu2:V('copper-2'),
+    steel:V('steel'),sf:V('steel-fill'),ins:V('ins'),warn:V('warn'),ok:V('ok'),grid:V('grid')};
+  let imgs;
+  try{
+    imgs=await Promise.all([svgImage($('svgA'),652),svgImage($('svgB'),428),svgImage($('svgY'),236),svgImage($('svgD'),236),svgImage($('svgS'),560)]);
+  }finally{
+    if(prevT===null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevT);
+    foc.forEach(e=>e.classList.add('dimfocus')); hot.forEach(e=>e.classList.add('hot')); noT.remove();
+  }
+  const [iA,iB,iY,iD,iS]=imgs;
+  const BODY='"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif', MONO='"JetBrains Mono",Consolas,Menlo,monospace';
+  await document.fonts.ready;
+  // ---- 版面 ----
+  const LG=4*26+30, yK=104, hK=104, yA=yK+hK+GAP, hA=44+Math.max(iA.h,iB.h+LG)+18;
+  // 定子數據欄所需高度（含提示訊息換行）
+  const msgs=[...$('sMsgs').children,...$('msgs').querySelectorAll('li.warn')].map(li=>li.textContent.trim()).filter(Boolean);
+  const wT=520, wrap=(t,mw)=>{x.font=`400 13.5px ${BODY}`;const out=[];let line='';for(const ch of t){if(x.measureText(line+ch).width>mw&&line){out.push(line);line='';}line+=ch;}if(line)out.push(line);return out;};
+  let x=document.createElement('canvas').getContext('2d');
+  const mLines=msgs.map(m=>wrap(m,wT-50));
+  const tRows=[...$('sTbl').rows], tblH=60+tRows.reduce((a,r)=>a+(r.classList.contains('grp')?30:(r.cells[1]?34:0)),0)+(msgs.length?18+mLines.reduce((a,l)=>a+l.length*20+6,0):0)+16;
+  const yB=yA+hA+GAP, hB=Math.max(44+iS.h+20,tblH), H=yB+hB+PAD+30;
+  const cv=document.createElement('canvas'); cv.width=W*SC; cv.height=H*SC;
+  x=cv.getContext('2d'); x.scale(SC,SC); x.textBaseline='alphabetic';
+  const F=(sz,wt=400,fam=BODY)=>x.font=`${wt} ${sz}px ${fam}`;
+  const T=(t,px,py,sz,{c=C.ink,w=400,fam=BODY,al='left'}={})=>{F(sz,w,fam);x.fillStyle=c;x.textAlign=al;x.fillText(t,px,py);return x.measureText(t).width;};
+  // 含 <sub> 的文字
+  const rich=(html,px,py,sz,{c=C.ink,w=400,fam=BODY,al='left'}={})=>{
+    const parts=[];html.replace(/<sub>(.*?)<\/sub>|([^<]+)|<[^>]+>/g,(m,sb,tx)=>{if(sb!=null)parts.push([dec(sb),1]);else if(tx!=null)parts.push([dec(tx),0]);});
+    let tw=0;for(const [t,sb] of parts){F(sb?sz*.72:sz,w,fam);tw+=x.measureText(t).width;}
+    let cx=al==='right'?px-tw:al==='center'?px-tw/2:px; x.fillStyle=c; x.textAlign='left';
+    for(const [t,sb] of parts){F(sb?sz*.72:sz,w,fam);x.fillText(t,cx,py+(sb?sz*.22:0));cx+=x.measureText(t).width;}
+    return tw;};
+  const rr=(px,py,w,h,r,fill,stroke,lw=1)=>{x.beginPath();x.roundRect(px,py,w,h,r);if(fill){x.fillStyle=fill;x.fill();}if(stroke){x.strokeStyle=stroke;x.lineWidth=lw;x.stroke();}};
+  const panel=(px,py,w,h,title,sub)=>{rr(px,py,w,h,10,C.panel,C.line);if(title){const tw=T(title,px+18,py+30,19,{w:700});if(sub)T(sub,px+18+tw+12,py+30,13.5,{c:C.muted});}};
+  const cad=(px,py,w,h)=>{x.save();rr(px,py,w,h,6,C.sunk,C.line);x.clip();x.strokeStyle=C.grid;x.lineWidth=1;x.beginPath();
+    for(let gx=px+16;gx<px+w;gx+=16){x.moveTo(gx+.5,py);x.lineTo(gx+.5,py+h);}for(let gy=py+16;gy<py+h;gy+=16){x.moveTo(px,gy+.5);x.lineTo(px+w,gy+.5);}x.stroke();x.restore();rr(px,py,w,h,6,null,C.line);};
+  x.fillStyle=C.bg; x.fillRect(0,0,W,H);
+  // ---- 頁首 ----
+  const logo=await new Promise(ok=>{const im=new Image();im.onload=()=>ok(im);im.onerror=()=>ok(null);
+    im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(document.querySelector('h1 .brand')));});
+  if(logo) x.drawImage(logo,PAD,PAD,48,48);
+  const tw=T('電阻計算',PAD+62,PAD+36,30,{w:700});
+  const name=($('pName').value||$('pSel').value||'').trim();
+  T((motor==='in'?'內轉式馬達':'外轉式馬達')+(name?'　·　'+name:''),PAD+62+tw+18,PAD+35,18,{c:C.muted,w:500});
+  const now=new Date(), ds=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+  T(`接線 ${conn==='Y'?'Y 星形':'Δ 三角形'}　·　${ds}`,W-PAD,PAD+35,15,{c:C.muted,al:'right'});
+  x.fillStyle=C.cu; x.fillRect(PAD,yK-14,W-2*PAD,3);
+  // ---- KPI ----
+  const K=[['端子間電阻 R<sub>LL</sub>','kRLL',1],['工作溫度 R<sub>LL</sub>','kRLLop'],['每相 R<sub>ph</sub>','kRph'],['平均匝長 MLT','kMLT'],['每線圈線長','kLen']];
+  const kw=(W-2*PAD)/K.length;
+  rr(PAD,yK,W-2*PAD,hK,10,C.panel,C.line);
+  K.forEach(([lb,id,hl],i)=>{const kx=PAD+i*kw;
+    if(i){x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(kx+.5,yK+16);x.lineTo(kx+.5,yK+hK-16);x.stroke();}
+    const el=$(id), sm=el.querySelector('small'), num=(el.firstChild&&el.firstChild.nodeType===3?el.firstChild.textContent:el.textContent).trim();
+    rich(lb,kx+22,yK+30,15,{c:C.muted});
+    T(num,kx+22,yK+70,34,{c:hl?C.cu:C.ink,w:600,fam:MONO});
+    if(sm) T(sm.textContent.trim(),kx+22,yK+92,14,{c:C.muted,fam:MONO});});
+  // ---- 第二列：槽空間排線圖、側視圖、接線電路 ----
+  const wA=iA.w+36, wB=iB.w+36, wC=W-2*PAD-wA-wB-2*GAP;
+  let px=PAD;
+  panel(px,yA,wA,hA,'槽空間排線圖'); cad(px+18,yA+44,iA.w,iA.h); x.drawImage(iA.im,px+18,yA+44,iA.w,iA.h);
+  px+=wA+GAP; panel(px,yA,wB,hA,'側視圖'); cad(px+18,yA+44,iB.w,iB.h); x.drawImage(iB.im,px+18,yA+44,iB.w,iB.h);
+  // 圖例（橫跨兩張圖下方）
+  { const lg=[['sq',C.sf,C.steel,'齒（矽鋼片）'],['sq',C.ins,null,'絕緣'],['cu',C.cu,C.cu2,'導線（奇偶層交替色）'],['ds',null,C.ink,'平均匝路徑'],['ds',null,C.warn,'可用厚度上限'],['ds',null,C.steel,'槽中心線'],['ci',C.warn,null,'越過槽中心線的導線']];
+    const lx0=PAD+wA+GAP+18; let ly=yA+44+iB.h+34;
+    T('圖例',lx0,ly,13.5,{c:C.cu,w:700}); ly+=28;
+    lg.forEach(([k,f1,f2,t],li)=>{ let lx=lx0+(li>=4?(iB.w/2+10):0); const ly2=ly+(li%4)*26; ((ly)=>{
+      if(k==='sq'){rr(lx,ly-11,12,12,2,f1,f2);}
+      else if(k==='cu'){rr(lx,ly-11,12,12,2,f1);rr(lx+9,ly-11,12,12,2,f2);}
+      else if(k==='ds'){x.setLineDash([3,2]);rr(lx,ly-11,12,12,2,null,f2,1.5);x.setLineDash([]);}
+      else {x.beginPath();x.arc(lx+6,ly-5,6,0,7);x.fillStyle=f1;x.fill();}
+      T(t,lx+(k==='cu'?27:18)+8,ly,14,{c:C.muted});})(ly2);});
+  }
+  px+=wB+GAP; panel(px,yA,wC,hA,'接線電路');
+  const cw=(wC-36-14)/2, chH=38+Math.min(iY.w,cw-20)*iY.h/iY.w+24+5*25+4;
+  [['Y 星形',iY,'cvY',conn==='Y'],['Δ 三角形',iD,'cvD',conn==='D']].forEach(([tt,im,id,on],i)=>{
+    const bx=px+18+i*(cw+14), by=yA+44;
+    x.save(); if(!on) x.globalAlpha=.55;
+    rr(bx,by,cw,chH,8,on?C.panel:C.sunk,on?C.cu:C.line,on?1.6:1.2);
+    T(tt,bx+14,by+28,16,{w:700});
+    const sw=Math.min(im.w,cw-20), sh=sw*im.h/im.w; x.drawImage(im.im,bx+(cw-sw)/2,by+38,sw,sh);
+    const sp=[...$(id).children]; let ry=by+38+sh+24;
+    for(let j=0;j<sp.length;j+=2){
+      rich(sp[j].innerHTML,bx+14,ry,13.5,{c:C.muted});
+      const hl=sp[j+1].classList.contains('hl');
+      rich(sp[j+1].innerHTML,bx+cw-14,ry,14,{c:hl?C.cu:C.ink,w:hl?700:400,fam:MONO,al:'right'});
+      ry+=25;}
+    x.restore();});
+  // ---- 第三列：定子全圖、定子數據、輸入參數 ----
+  px=PAD; const wS=iS.w+36;
+  panel(px,yB,wS,hB,'定子全圖',$('sSub').textContent); cad(px+18,yB+44,iS.w,iS.h); x.drawImage(iS.im,px+18,yB+44,iS.w,iS.h);
+  px+=wS+GAP;
+  panel(px,yB,wT,hB,'定子與槽數據');
+  { let ty=yB+60; const L=px+18, R=px+wT-18;
+    for(const tr of $('sTbl').rows){
+      if(tr.classList.contains('grp')){ty+=8;T(tr.textContent.trim(),L,ty+10,13.5,{c:C.cu,w:700});ty+=22;continue;}
+      const [a,b]=tr.cells; if(!b) continue;
+      const bc=b.cloneNode(true), ch=bc.querySelector('.chip'); if(ch) ch.remove();
+      const ly=ty+22; T(a.textContent.trim(),L,ly,15,{c:C.ink});
+      let rx=R;
+      if(ch){F(12.5,700);const t=ch.textContent.trim(), cw2=x.measureText(t).width+16;
+        const cc=ch.classList.contains('warn')?C.warn:ch.classList.contains('mid')?'#b7791f':C.ok;
+        rr(rx-cw2,ly-16,cw2,22,11,cc+'22',null);T(t,rx-cw2/2,ly,12.5,{c:cc,w:700,al:'center'});rx-=cw2+10;}
+      T(bc.textContent.trim(),rx,ly,15,{fam:MONO,al:'right'});
+      x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(L,ty+33.5);x.lineTo(R,ty+33.5);x.stroke();
+      ty+=34;}
+    ty+=18+14;
+    for(const ls of mLines){x.fillStyle=C.warn;x.beginPath();x.arc(L+3,ty-5,2.5,0,7);x.fill();
+      for(const l of ls){T(l,L+12,ty,13.5,{c:C.warn});ty+=20;} ty+=6;}
+  }
+  px+=wT+GAP; const wP=W-PAD-px;
+  panel(px,yB,wP,hB,'輸入參數');
+  { const rows=[];
+    document.querySelectorAll('.inputs section.step:not(.preset)').forEach(sec=>{
+      const h=sec.querySelector('h2'); const hc=h.cloneNode(true); hc.querySelector('.n')?.remove();
+      const items=[];
+      sec.querySelectorAll('.f').forEach(f=>{if(f.offsetParent===null) return;
+        const inp=f.querySelector('input:not([type=file]),select'); if(!inp) return;
+        const tx=f.querySelector('.tx'), u=f.querySelector('.u');
+        let v=inp.tagName==='SELECT'?inp.options[inp.selectedIndex]?.text||'':inp.value;
+        items.push([tx?tx.innerHTML:'',v,u?u.textContent.trim():'']);});
+      if(items.length) rows.push([hc.textContent.trim(),items]);});
+    const colW=(wP-36-24)/2; let col=0, ty=yB+60; const tot=rows.reduce((s,r)=>s+30+Math.ceil(r[1].length/2)*30,0);
+    for(const [hd,items] of rows){
+      ty+=6; T(hd,px+18,ty+10,13.5,{c:C.cu,w:700}); ty+=22;
+      items.forEach((it,j)=>{const cx=px+18+(j%2)*(colW+24), ly=ty+Math.floor(j/2)*30+20;
+        rich(it[0],cx,ly,14.5,{c:C.muted});
+        let r=cx+colW; if(it[2]){r-=T(it[2],r,ly,12.5,{c:C.muted,al:'right'})+6;}
+        T(it[1],r,ly,15,{fam:MONO,w:600,al:'right'});
+        x.strokeStyle=C.line;x.lineWidth=1;x.beginPath();x.moveTo(cx,ly+9.5);x.lineTo(cx+colW,ly+9.5);x.stroke();});
+      ty+=Math.ceil(items.length/2)*30+6;}
+  }
+  // ---- 頁尾 ----
+  T('估算值，供設計階段參考；實測請以四線法量測端子間電阻。',PAD,H-PAD+4,13,{c:C.muted});
+  T('電阻計算 · siderpan.github.io/winding-resistance-calculator',W-PAD,H-PAD+4,13,{c:C.muted,al:'right'});
+  return {cv,name,ds};
+}
+$('pngBtn').addEventListener('click',async()=>{
+  const b=$('pngBtn'); if(!lastR||lastR.err){alert('目前沒有可輸出的計算結果。');return;}
+  b.disabled=true;
+  try{const {cv,name,ds}=await build();
+    cv.toBlob(bl=>{const a=document.createElement('a');a.href=URL.createObjectURL(bl);
+      a.download=(name||'電阻計算').replace(/[\\/:*?"<>|]+/g,'_')+'_'+ds.replace(/[: ]/g,'').replace(/-/g,'')+'.png';
+      document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);},'image/png');
+  }catch(e){console.error(e);alert('輸出圖片失敗：'+e.message);}
+  finally{b.disabled=false;}
+});
+})();
 })();
 </script>
 </body>
