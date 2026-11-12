@@ -403,6 +403,30 @@ section.step,.card,header.top{border-color:var(--line)}
 .btn.pri{background:var(--acc);border-color:var(--acc)}
 .msgs li.warn{border-left-color:var(--warn)}
 .msgs li.ok{border-left-color:var(--ok)}
+
+/* 完成外徑查找表 */
+.lookbtn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 8px;font-size:.84rem;color:var(--acc);border-color:var(--acc);background:var(--acc-soft)}
+.lookbtn svg{width:15px;height:15px}
+.lookbtn:hover{background:var(--acc);color:#fff}
+#doPop{position:fixed;z-index:55;width:min(470px,calc(100vw - 24px));max-height:min(520px,calc(100vh - 24px));display:flex;flex-direction:column;background:var(--panel);color:var(--ink);border:1px solid var(--line-2);border-top:2px solid var(--acc);border-radius:var(--r);box-shadow:0 10px 30px rgba(20,30,40,.18)}
+#doPop header{display:flex;align-items:center;gap:8px;padding:10px 12px 8px;border-bottom:1px solid var(--line)}
+#doPop header b{font-size:.92rem;flex:1}
+#doPop .x{border:0;background:transparent;color:var(--muted);font-size:1.1rem;cursor:pointer;line-height:1}
+#doPop .gsel{display:flex;gap:4px;white-space:nowrap;padding:8px 12px 6px;align-items:center;font-size:.78rem;color:var(--muted)}
+#doPop .gsel button{font:inherit;font-size:.78rem;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);padding:3px 9px;border-radius:2px;cursor:pointer}
+#doPop .gsel button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+#doPop .tw{overflow:auto;padding:0 12px}
+#doPop table{width:100%;border-collapse:collapse;font-family:var(--f-mono);font-size:.82rem;font-variant-numeric:tabular-nums}
+#doPop th{position:sticky;top:0;background:var(--panel);font:600 .72rem var(--f-body);letter-spacing:.04em;color:var(--muted);text-align:right;padding:6px 6px;border-bottom:1px solid var(--line-2)}
+#doPop th:first-child,#doPop td:first-child{text-align:left}
+#doPop td{text-align:right;padding:4px 6px;border-bottom:1px dashed var(--line)}
+#doPop td.v{cursor:pointer;border-radius:2px}
+#doPop td.v:hover{background:var(--acc);color:#fff}
+#doPop td.v.g{font-weight:700;color:var(--acc)}
+#doPop td.v.g:hover{color:#fff}
+#doPop tr.near td{background:var(--acc-soft)}
+#doPop tr.near td.v:hover{background:var(--acc)}
+#doPop .note{padding:8px 12px 10px;font-size:.74rem;color:var(--muted);border-top:1px solid var(--line);margin:0}
 </style>
 </head>
 <body>
@@ -460,6 +484,7 @@ section.step,.card,header.top{border-color:var(--line)}
     <div class="fields">
       <div class="f"><label class="lab" for="d"><span class="tx">裸銅線徑 d</span><button class="info" data-k="d" type="button">?</button><span class="u">mm</span></label><input id="d" type="number" step="0.01" min="0.01" value="0.35"></div>
       <div class="f"><label class="lab" for="dout"><span class="tx">完成外徑 d<sub>o</sub></span><button class="info" data-k="dout" type="button">?</button><span class="u">mm</span></label><input id="dout" type="number" step="0.001" min="0.01" value="0.395"></div>
+      <div class="f"><span class="lab"><span class="tx">完成外徑查表</span></span><button type="button" class="btn lookbtn" id="doLook" aria-haspopup="dialog" aria-expanded="false" title="依裸銅線徑查完成外徑建議值"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="1"/><path d="M1.5 6h13M1.5 9.5h13M6 6v7.5"/></svg>查表帶入</button></div>
       <div class="f"><label class="lab" for="N"><span class="tx">每線圈匝數 N</span><button class="info" data-k="N" type="button">?</button><span class="u">匝</span></label><input id="N" type="number" step="1" min="1" value="60"></div>
       <div class="f"><label class="lab" for="ns"><span class="tx">並繞股數 n<sub>s</sub></span><button class="info" data-k="ns" type="button">?</button><span class="u">股</span></label><input id="ns" type="number" step="1" min="1" max="20" value="1"></div>
       <div class="f"><label class="lab" for="g"><span class="tx">鬆散係數 g</span><button class="info" data-k="g" type="button">?</button></label><input id="g" type="number" step="0.01" min="1" max="1.6" value="1.00"></div>
@@ -1491,6 +1516,67 @@ document.querySelectorAll('.inputs .f').forEach(fd=>{
 });
 applyMotor();
 if(location.hash==='#inner'){motor='out';setMotor('in');} else run();
+
+
+/* ===== 完成外徑查找表（IEC 60317-0-1 漆包圓銅線外徑；mm）=====
+   每列：[裸銅標稱線徑, 1 級最小, 1 級最大, 2 級最小, 2 級最大, 3 級最小, 3 級最大]；0.56 以上僅列 2 級最大值 */
+const DO_TBL=[[0.050,.055,.060,.061,.066,.067,.072],[0.053,.058,.064,.065,.070,.071,.076],[0.056,.062,.067,.068,.074,.075,.080],[0.060,.066,.072,.073,.079,.080,.085],
+[0.063,.069,.076,.077,.083,.084,.089],[0.067,.074,.080,.081,.088,.089,.093],[0.071,.078,.084,.085,.091,.092,.097],[0.075,.082,.089,.090,.095,.096,.102],[0.080,.087,.094,.095,.101,.102,.108],
+[0.085,.093,.100,.101,.107,.108,.114],[0.090,.098,.105,.106,.113,.114,.120],[0.095,.103,.111,.112,.119,.120,.126],[0.100,.108,.117,.118,.125,.126,.132],[0.106,.115,.123,.124,.132,.133,.140],
+[0.112,.121,.130,.131,.139,.140,.147],[0.118,.128,.136,.137,.145,.146,.154],[0.125,.135,.144,.145,.154,.155,.163],[0.132,.143,.152,.153,.162,.163,.171],[0.140,.151,.160,.161,.171,.172,.181],
+[0.150,.162,.171,.172,.182,.183,.193],[0.160,.172,.182,.183,.194,.195,.205],[0.170,.183,.194,.195,.205,.206,.217],[0.180,.193,.204,.205,.217,.218,.229],[0.190,.204,.216,.217,.228,.229,.240],
+[0.200,.214,.226,.227,.239,.240,.252],[0.212,.227,.240,.241,.254,.255,.268],[0.224,.239,.252,.253,.266,.267,.280],[0.236,.253,.267,.268,.283,.284,.298],[0.250,.267,.281,.282,.297,.298,.312],
+[0.265,.283,.297,.298,.314,.315,.330],[0.280,.298,.312,.313,.329,.330,.345],[0.300,.319,.334,.335,.352,.353,.369],[0.315,.334,.349,.350,.367,.368,.384],[0.335,.355,.372,.373,.391,.392,.408],
+[0.355,.375,.392,.393,.411,.412,.428],[0.375,.396,.414,.415,.434,.435,.453],[0.400,.421,.439,.440,.459,.460,.478],[0.425,.447,.466,.467,.488,.489,.508],[0.450,.472,.491,.492,.513,.514,.533],
+[0.475,.499,.519,.520,.541,.542,.562],[0.500,.524,.544,.545,.566,.567,.587],
+[0.560,null,null,null,.630,null,null],[0.710,null,null,null,.789,null,null],[0.800,null,null,null,.884,null,null],[1.000,null,null,null,1.094,null,null],[1.250,null,null,null,1.349,null,null],[1.500,null,null,null,1.606,null,null]];
+{
+  let pop=null, grade=2, mode='max';
+  try{const g0=+localStorage.getItem('wr-dograde'); if(g0>=1&&g0<=3) grade=g0;}catch(e){}
+  const btn=$('doLook'), v3=x=>x==null?'—':x.toFixed(3);
+  const close=()=>{if(pop){pop.remove();pop=null;btn.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);}};
+  const outside=e=>{if(pop&&!pop.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)) close();};
+  const pick=(d,dov)=>{
+    $('d').value=d; $('dout').value=dov.toFixed(3);
+    for(const id of ['d','dout']) $(id).dispatchEvent(new Event('input',{bubbles:true}));
+    close();
+    let t=$('toast'); if(!t){t=document.createElement('div');t.id='toast';t.setAttribute('role','status');document.body.appendChild(t);}
+    t.textContent=`已帶入 d = ${d} mm、完成外徑 ${dov.toFixed(3)} mm`; t.className='show ok'; clearTimeout(t._h); t._h=setTimeout(()=>t.className='ok',2400);
+  };
+  const render=()=>{
+    const d=parseFloat($('d').value)||0;
+    let near=-1,bd=1e9; DO_TBL.forEach((r,i)=>{const e=Math.abs(r[0]-d); if(e<bd){bd=e;near=i;}});
+    const col=g=>mode==='max'?2*g:2*g-1;
+    pop.querySelector('tbody').innerHTML=DO_TBL.map((r,i)=>`<tr${i===near?' class="near"':''}><td>${r[0].toFixed(3)}</td>${[1,2,3].map(g=>{const x=r[col(g)];return x==null?'<td>—</td>':`<td class="v${g===grade?' g':''}" data-i="${i}" data-g="${g}" title="${g} 級：${v3(r[2*g-1])} ～ ${v3(r[2*g])} mm（點選帶入）">${v3(x)}</td>`;}).join('')}</tr>`).join('');
+    pop.querySelectorAll('.gsel button[data-g]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.g===grade));
+    pop.querySelectorAll('.gsel button[data-m]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.m===mode));
+    const tr=pop.querySelector('tr.near'), tw=pop.querySelector('.tw'); if(tr) tw.scrollTop=tr.offsetTop-tw.clientHeight/2;
+  };
+  const open=()=>{
+    if(pop){close();return;}
+    pop=document.createElement('div'); pop.id='doPop'; pop.setAttribute('role','dialog'); pop.setAttribute('aria-label','完成外徑查找表');
+    pop.innerHTML=`<header><b>完成外徑建議表</b><button type="button" class="x" aria-label="關閉">×</button></header>
+      <div class="gsel"><span>等級</span><button type="button" data-g="1" title="1 級：薄漆膜">1 級</button><button type="button" data-g="2" title="2 級：標準漆膜">2 級</button><button type="button" data-g="3" title="3 級：厚漆膜">3 級</button>
+      <span style="flex:1"></span><span>取值</span><button type="button" data-m="max">最大</button><button type="button" data-m="min">最小</button></div>
+      <div class="tw"><table><thead><tr><th>裸銅 d</th><th>1 級 d<sub>o</sub></th><th>2 級 d<sub>o</sub></th><th>3 級 d<sub>o</sub></th></tr></thead><tbody></tbody></table></div>
+      <p class="note">依 IEC 60317-0-1 漆包圓銅線外徑（mm）。點選任一數值會同時帶入裸銅線徑 d 與完成外徑 d<sub>o</sub>；藍底列為最接近目前 d 的線徑。估排線佔空時建議取最大值；0.56 mm 以上僅列 2 級最大值。實際外徑請以線材供應商規格為準。</p>`;
+    document.body.appendChild(pop);
+    pop.querySelector('.x').onclick=close;
+    pop.querySelectorAll('.gsel button[data-g]').forEach(b=>b.onclick=()=>{grade=+b.dataset.g;try{localStorage.setItem('wr-dograde',grade);}catch(e){}render();});
+    pop.querySelectorAll('.gsel button[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;render();});
+    pop.querySelector('tbody').addEventListener('click',e=>{const td=e.target.closest('td.v'); if(!td) return; const r=DO_TBL[+td.dataset.i], g=+td.dataset.g; pick(r[0],r[mode==='max'?2*g:2*g-1]);});
+    btn.setAttribute('aria-expanded','true'); document.addEventListener('pointerdown',outside,true);
+    render();
+    // 內容填入後再定位：優先放在按鍵下方，空間不足時放上方，並限制在視窗內
+    const r=btn.getBoundingClientRect(), pw=pop.offsetWidth, ph=pop.offsetHeight;
+    pop.style.left=Math.max(12,Math.min(innerWidth-pw-12,r.left))+'px';
+    pop.style.top=(r.bottom+6+ph<=innerHeight-12?r.bottom+6:Math.max(12,Math.min(innerHeight-12-ph,r.top-6-ph)))+'px';
+    render();
+  };
+  btn.addEventListener('click',open);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape') close();});
+  addEventListener('resize',close);
+}
 
 /* ===== 輸出一頁式 PNG ===== */
 (()=>{
