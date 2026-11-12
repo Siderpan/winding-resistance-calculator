@@ -800,18 +800,20 @@ function compute(){
 const rrPath=(cx,cy,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h/2));const x=cx-w/2,y=cy-h/2;
   return r<=0?`M${x} ${y}h${w}v${h}h${-w}Z`:`M${x+r} ${y}h${w-2*r}a${r} ${r} 0 0 1 ${r} ${r}v${h-2*r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w-2*r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h-2*r)}a${r} ${r} 0 0 1 ${r} ${-r}Z`;};
 const n2=x=>+x.toFixed(2);
-function dimH(x1,x2,y,label,ext1,ext2,key){ // horizontal dimension
+function dimH(x1,x2,y,label,ext1,ext2,key,above){ // horizontal dimension；above：文字放在尺寸線上方
   let s=`<g class="dim" data-dim="${key||''}"><g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(x1)}" y1="${n2(ext1)}" x2="${n2(x1)}" y2="${n2(y+5)}" stroke-opacity=".45"/><line x1="${n2(x2)}" y1="${n2(ext2)}" x2="${n2(x2)}" y2="${n2(y+5)}" stroke-opacity=".45"/>`;
   s+=`<line x1="${n2(x1)}" y1="${n2(y)}" x2="${n2(x2)}" y2="${n2(y)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
   const w=Math.abs(x2-x1);
   const tl=label.replace(/<[^>]+>/g,'').length*FSU*.62;   // 文字寬估算
-  s+=w>tl+12?`<text class="dimt" x="${n2((x1+x2)/2)}" y="${n2(y+FSU*.95+6)}" text-anchor="middle">${label}</text>`:`<text class="dimt" x="${n2(Math.max(x1,x2)+10)}" y="${n2(y+FSU*.35)}">${label}</text>`;
+  s+=w>tl+12?`<text class="dimt" x="${n2((x1+x2)/2)}" y="${n2(above?y-7:y+FSU*.95+6)}" text-anchor="middle">${label}</text>`:`<text class="dimt" x="${n2(Math.max(x1,x2)+10)}" y="${n2(y+FSU*.35)}">${label}</text>`;
   return s+'</g>';
 }
-function dimV(x,y1,y2,label,ext,key){
+function dimV(x,y1,y2,label,ext,key,rot){ // rot：文字直書（沿尺寸線旋轉 90°）
   let s=`<g class="dim" data-dim="${key||''}"><g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(ext)}" y1="${n2(y1)}" x2="${n2(x-5)}" y2="${n2(y1)}" stroke-opacity=".45"/><line x1="${n2(ext)}" y1="${n2(y2)}" x2="${n2(x-5)}" y2="${n2(y2)}" stroke-opacity=".45"/>`;
   s+=`<line x1="${n2(x)}" y1="${n2(y1)}" x2="${n2(x)}" y2="${n2(y2)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
-  s+=`<text class="dimt" x="${n2(x-9)}" y="${n2((y1+y2)/2+FSU*.35)}" text-anchor="end">${label}</text>`;
+  if(rot){const m=(y1+y2)/2, len=label.replace(/<[^>]+>/g,'').length*FSU*.62;
+    s+=`<text class="dimt" data-fixed="1" data-ob="${n2(x-7-FSU)},${n2(m-len/2)},${n2(FSU)},${n2(len)}" x="${n2(x-7)}" y="${n2(m)}" text-anchor="middle" transform="rotate(-90 ${n2(x-7)} ${n2(m)})">${label}</text>`;}
+  else s+=`<text class="dimt" x="${n2(x-9)}" y="${n2((y1+y2)/2+FSU*.35)}" text-anchor="end">${label}</text>`;
   return s+'</g>';
 }
 /* 標註字級：依圖面實際顯示寬度換算，讓三張圖的文字在螢幕上一樣大（約 13.5 px） */
@@ -833,7 +835,9 @@ function declutter(svg){
   // 水平／垂直尺寸線視為障礙物（斜向引線不算），避免文字壓在尺寸線上
   for(const ln of svg.querySelectorAll('line[marker-end]')){ try{const b=ln.getBBox(); if(b.width<1||b.height<1) placed.push({x:b.x-2,y:b.y-2.5,w:b.width+4,h:b.height+5});}catch(e){} }
   const hit=(a,b)=>a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h;
+  for(const t of T) if(t.dataset.fixed){const o=t.dataset.ob.split(',').map(Number); placed.push({x:o[0],y:o[1],w:o[2],h:o[3]});}
   for(const t of T){
+    if(t.dataset.fixed) continue;
     t.removeAttribute('transform'); {const pl=t.parentNode&&t.parentNode.querySelector&&t.parentNode.querySelector('polyline'); if(pl&&pl.dataset.p0) pl.setAttribute('points',pl.dataset.p0);}
     let bb; try{bb=t.getBBox();}catch(e){return;} if(!bb.width) return;
     const r={x:bb.x-pad,y:bb.y-pad,w:bb.width+2*pad,h:bb.height+2*pad};
@@ -859,13 +863,13 @@ function declutter(svg){
     const pl=(dx||best)&&t.parentNode&&t.parentNode.querySelector&&t.parentNode.querySelector('polyline');
     if(pl){ if(!pl.dataset.p0) pl.dataset.p0=pl.getAttribute('points');
       const pts=pl.dataset.p0.split(' ').map(q=>q.split(',').map(Number)), e=pts[pts.length-1];
-      pts[pts.length-1]=[e[0]+dx,e[1]+best]; pl.setAttribute('points',pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')); }
+      pts[pts.length-1]=[e[0]+dx,e[1]+best]; if(pts.length>=3){const m=pts[pts.length-2]; pts[pts.length-2]=[m[0],m[1]+best];} pl.setAttribute('points',pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')); }
     placed.push({x:r.x+dx,y:r.y+best,w:r.w,h:r.h});
   }
 }
 function leader(pts,label,key,anchor){ // 引線標註：pts 為折線，文字放在最後一點
   const e=pts[pts.length-1], pv=pts[pts.length-2]||e, dir=anchor||(e[0]>=pv[0]?'start':'end');
-  return `<g class="dim" data-dim="${key}"><polyline points="${pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(pts[0][0])}" cy="${n2(pts[0][1])}" r="1.8" fill="var(--ink)"/><text class="dimt" x="${n2(e[0]+(dir==='start'?7:-7))}" y="${n2(e[1]+FSU*.35)}" text-anchor="${dir}">${label}</text></g>`;
+  return `<g class="dim" data-dim="${key}"><polyline points="${pts.map(q=>n2(q[0])+','+n2(q[1])).join(' ')}" fill="none" stroke="var(--ink)" stroke-width=".8"/><circle cx="${n2(pts[0][0])}" cy="${n2(pts[0][1])}" r="1.8" fill="var(--ink)"/><text class="dimt" x="${n2(e[0]+(dir==='start'?1:-1)*(FSU*.5+6))}" y="${n2(e[1]+FSU*.35)}" text-anchor="${dir}">${label}</text></g>`;
 }
 const SUB=(a,b)=>`${a}<tspan dy=".28em" style="font-size:.72em">${b}</tspan><tspan dy="-.2em"></tspan>`;
 const DEFS=`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="var(--ink)" stroke-width="1.4"/></marker></defs>`;
@@ -1057,26 +1061,26 @@ function drawS(R){
   g+=`<circle cx="${C}" cy="${C}" r="${n2(Rf*s)}" fill="none" stroke="var(--steel)" stroke-width=".8"/>`;
   g+=`<g fill="var(--ins)" stroke="var(--enamel)" stroke-width=".4">${insl}</g>`;
   g+=`<g>${wires}</g><g class="bad">${bad}</g>`;
-  g+=`<g class="dim" data-dim="Z"><text class="dimt" x="${C}" y="${C+4}" text-anchor="middle">Z = ${Z}</text></g>`;
+  g+=`<g class="dim" data-dim="Z"><circle cx="${C}" cy="${C}" r="2" fill="var(--ink)"/><text class="dimt" x="${C}" y="${n2(C-9)}" text-anchor="middle">Z = ${Z}</text></g>`;
   // 極靴圓（氣隙側）虛線、外徑尺寸、槽開口標註
   const Rp=Rsh*s, Ro=Rmax*s;
   g+=`<circle cx="${C}" cy="${C}" r="${n2(Rp)}" fill="none" stroke="var(--muted)" stroke-width=".6" stroke-dasharray="6 4"/>`;
   g=DEFS+g;
   const odReal=sg>0?SH.real:!!st.Ryf;
-  g+=dimH(C-Ro,C+Ro,C-Ro-24,'外徑 '+(odReal?'Ø':'約 Ø')+f(2*Rmax,2),C,C,'Ds');
+  g+=dimH(C-Ro,C+Ro,C-Ro-22,'外徑 '+(odReal?'Ø':'約 Ø')+f(2*Rmax,2),C,C,'Ds',true);
   {const Rdi=sg>0?Rf:Rsh, idReal=sg>0?!!st.Ryf:SH.real, ri=Rdi*s;
    g+=dimH(C-ri,C+ri,C+Ro+22,'內徑 '+(idReal?'Ø':'約 Ø')+f(2*Rdi,2),C,C,'Di');}
   {const a=225*Math.PI/180, rr=Ry*s, ex=C+rr*Math.cos(a), ey=C-rr*Math.sin(a);
    g+=`<g class="dim" data-dim="Ry"><line x1="${C}" y1="${C}" x2="${n2(ex)}" y2="${n2(ey)}" stroke="var(--ink)" stroke-width=".8" marker-end="url(#ar)"/><text class="dimt" x="${n2(C+rr*.5*Math.cos(a)-6)}" y="${n2(C-rr*.5*Math.sin(a)-6)}" text-anchor="end">${SUB('R','y')} ${f(Ry,2)}</text></g>`;}
   if(SH.real){
-    let best=0,bd=1e9;for(let k=0;k<Z;k++){let a=(90-(st.al*180/Math.PI)*(2*k+1))%360;if(a<0)a+=360;const d=Math.abs(a-55);if(d<bd){bd=d;best=a;}}
+    let best=0,bd=1e9;for(let k=0;k<Z;k++){let a=(90-(st.al*180/Math.PI)*(2*k+1))%360;if(a<0)a+=360;const d=Math.abs(a-68);if(d<bd){bd=d;best=a;}}
     const ph=best*Math.PI/180, x1=C+Rp*Math.cos(ph), y1=C-Rp*Math.sin(ph);
     if(sg>0){
       const x2=C+(Rp+26)*Math.cos(ph), y2=C-(Rp+26)*Math.sin(ph);
-      g+=leader([[x1,y1],[x2,y2],[x2+12,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
+      g+=leader([[x1,y1],[x2,y2],[x2+16,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
     }else{
       const rr=Math.max(Rp-26,Rp*.55), x2=C+rr*Math.cos(ph), y2=C-rr*Math.sin(ph);
-      g+=leader([[x1,y1],[x2,y2],[x2-12,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
+      g+=leader([[x1,y1],[x2,y2],[x2-16,y2]],SUB('b','so')+' = '+f(st.wso,2),'wso');
     }
   }
   svg.innerHTML=g; fitText(svg); declutter(svg);
@@ -1170,10 +1174,15 @@ $('boxD').addEventListener('click',()=>$('cD').click());
 function drawB(R){
   const {p,layers,t,Lp,bp,r0}=R, svg=$('svgB');
   const Xh=bp/2+t, oh=p.i+t, Yh=Math.max(Lp/2+t,p.L/2+p.hup,p.L/2+p.hdn), hl=p.hup>0||p.hdn>0;
-  // 先依高度決定比例，再加寬畫布容納左右標註，讓圖形盡量放大
-  const s=Math.min(330/(2*Yh),420/(2*Xh)), W=Math.max(380,Math.ceil(2*Xh*s+(hl?260:210)));
-  const cx=W/2+(hl?-8:10), top=32, cy=top+Yh*s;
-  const H=Math.ceil(cy+Yh*s+52);
+  // 標註改放上下（L 為直書），左右只留尺寸線的空間，讓圖形盡量放大
+  const s=Math.min(330/(2*Yh),420/(2*Xh));
+  const dw=svg.getBoundingClientRect().width||320, mPx=FS_PX*1.2+34+(hl?30:12);   // 左右標註所需螢幕寬度
+  const W=Math.ceil(Math.max(2*Xh*s*1.15,2*Xh*s/Math.max(.35,1-mPx/dw),(2*Yh*s+110)/1.25));   // 高寬比上限，避免細長齒時圖面過高
+  const fe=FS_PX*W/dw;                                   // 預估標註字高（圖面單位）
+  const left=fe*1.2+30, top=(p.hup>0||r0>0)?fe+24:18;
+  const cx=left+Xh*s+(W-left-2*Xh*s-(hl?30:12))/2, cy=top+Yh*s;
+  const yb=cy+Yh*s+(p.hdn>0?fe+26:18);                  // b 尺寸線位置
+  const H=Math.ceil(yb+fe+16);
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`); fitText(svg);
   let g=DEFS;
   g+=`<path d="${rrPath(cx,cy,(bp+2*t)*s,(Lp+2*t)*s,(r0+t)*s)}" fill="var(--copper-soft)" stroke="var(--copper)" stroke-width=".8"/>`;
@@ -1194,13 +1203,13 @@ function drawB(R){
     g+=`<line x1="${n2(cx-Xh*s-10)}" y1="${n2(yl)}" x2="${n2(xr+6)}" y2="${n2(yl)}" stroke="${col}" stroke-width="1.4" stroke-dasharray="6 3"/>`;
     g+=`<g stroke="var(--ink)" stroke-width=".8"><line x1="${n2(cx+p.b/2*s)}" y1="${n2(yf)}" x2="${n2(xr+5)}" y2="${n2(yf)}" stroke-opacity=".45"/>`;
     g+=`<line x1="${n2(xr)}" y1="${n2(yf)}" x2="${n2(xr)}" y2="${n2(yl)}" marker-start="url(#ar)" marker-end="url(#ar)"/></g>`;
-    g+=`<text class="dimt" x="${n2(xr+10)}" y="${n2((yf+yl)/2+FSU*.35)}" style="fill:${col}">${SUB('H',nm)} = ${f(H,2)}</text>`;
-    if(bad) g+=`<text class="dimt" x="${n2(xr+10)}" y="${n2((yf+yl)/2+FSU*1.55)}" style="fill:var(--warn)">超出 ${f(oh-H,2)}</text>`;
+    // 數值標在限制線外側（上限線上方、下限線下方），不佔用左右空間
+    g+=`<text class="dimt" x="${n2(cx-Xh*s-8)}" y="${n2(sg<0?Math.min(yl,cy-(Lp/2+t)*s)-7:Math.max(yl,cy+(Lp/2+t)*s)+FSU*.95+5)}" style="fill:${col}">${SUB('H',nm)} = ${f(H,2)}${bad?`<tspan style="fill:var(--warn)">　超出 ${f(oh-H,2)}</tspan>`:''}</text>`;
     g+='</g>'; }
-  g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L = '+f(p.L,2),cx-p.b/2*s,'L');
-  g+=dimH(cx-p.b/2*s,cx+p.b/2*s,cy+Yh*s+18,'b = '+f(p.b,2),cy+p.L/2*s,cy+p.L/2*s,'b');
+  g+=dimV(cx-Xh*s-16,cy-p.L/2*s,cy+p.L/2*s,'L = '+f(p.L,2),cx-p.b/2*s,'L',true);
+  g+=dimH(cx-p.b/2*s,cx+p.b/2*s,yb,'b = '+f(p.b,2),cy+p.L/2*s,cy+p.L/2*s,'b');
   if(r0>0){const ccx=cx+(bp/2-r0)*s, ccy=cy-(Lp/2-r0)*s, q=[ccx+r0*s*Math.SQRT1_2,ccy-r0*s*Math.SQRT1_2];
-    g+=leader([q,[W-100,14]],SUB('r','0')+' = '+f(r0,2),'r0','start');}
+    {const ty=cy-Yh*s-8, x2=Math.min(W-6,q[0]+14); g+=leader([q,[x2,ty],[x2-14,ty]],SUB('r','0')+' = '+f(r0,2),'r0','end');}}
   svg.innerHTML=g; fitText(svg); declutter(svg);
 }
 
@@ -1479,7 +1488,7 @@ async function build(){
   const csv=conn==='Y'?$('svgY'):$('svgD'), cwB=(wR-GAP)/2;
   let imgs;
   try{
-    imgs=await Promise.all([svgImage($('svgB'),fitW($('svgB'),wR-56,hS-80,vB),vB,1.05),svgImage(csv,fitW(csv,cwB-44,hBot-74),null,1.05),svgImage($('svgS'),fitW($('svgS'),wC-56,hM-80,vS),vS,1.05)]);
+    imgs=await Promise.all([svgImage($('svgB'),fitW($('svgB'),wR-56,hS-80,vB),vB,1.3),svgImage(csv,fitW(csv,cwB-44,hBot-74),null,1.2),svgImage($('svgS'),fitW($('svgS'),wC-56,hM-80,vS),vS,1.3)]);
   }finally{
     if(prevT===null) root.removeAttribute('data-theme'); else root.setAttribute('data-theme',prevT);
     foc.forEach(e=>e.classList.add('dimfocus')); hot.forEach(e=>e.classList.add('hot')); noT.remove();
